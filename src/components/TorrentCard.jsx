@@ -51,6 +51,7 @@ const TorrentCard = ({ torrent, onUpdate }) => {
   const statusText = formatStatus(torrent.state);
 
   const [isToggling, setIsToggling] = useState(false);
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   const handleTogglePause = async () => {
     if (isToggling) return;
@@ -96,7 +97,13 @@ const TorrentCard = ({ torrent, onUpdate }) => {
         
         <div className="modern-info">
           <div className="modern-title-row">
-            <h3 title={torrent.name}>{torrent.name}</h3>
+            <h3 
+              title={torrent.name}
+              className={isTitleExpanded ? 'expanded' : ''}
+              onClick={() => setIsTitleExpanded(!isTitleExpanded)}
+            >
+              {torrent.name}
+            </h3>
             <span className={`modern-status ${isSeeding ? 'seeding' : ''}`}>{statusText}</span>
           </div>
           
