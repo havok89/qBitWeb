@@ -48,7 +48,7 @@ Perfect for advanced setups or reverse proxies where you want the UI running in 
 2. Build and run the Docker container:
    ```bash
    docker build -t qbitweb .
-   docker run -d -p 3000:80 --env-file .env qbitweb
+   docker run -d --name qbitweb -p 3000:80 --env-file .env qbitweb
    ```
 3. Access the UI at `http://localhost:3000`.
 
