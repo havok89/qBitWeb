@@ -52,6 +52,15 @@ Perfect for advanced setups or reverse proxies where you want the UI running in 
    ```
 3. Access the UI at `http://localhost:3000`.
 
+**Updating your Docker container:**
+When you pull new code (or make changes), you need to stop and remove the old container before running the new one:
+```bash
+docker build -t qbitweb .
+docker stop qbitweb
+docker rm qbitweb
+docker run -d --name qbitweb --restart unless-stopped -p 3000:80 --env-file .env qbitweb
+```
+
 ### Method 3: Local Development
 
 If you want to modify the code or run it locally for testing:
