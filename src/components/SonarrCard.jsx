@@ -68,7 +68,7 @@ const SonarrCard = ({ episode }) => {
             <img 
               src={posterSrc} 
               alt="Poster" 
-              style={{ width: '48px', height: '72px', objectFit: 'cover', borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} 
+              style={{ width: '58px', height: '87px', objectFit: 'cover', borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} 
             />
           </div>
         )}
