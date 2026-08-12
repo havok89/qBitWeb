@@ -99,6 +99,8 @@ const TorrentCard = ({ torrent, onUpdate }) => {
     }
   }, [showFilesModal]);
 
+  const [expandedFiles, setExpandedFiles] = useState(new Set());
+
   const handleToggleFile = async (fileIndex, currentPriority) => {
     const newPriority = currentPriority > 0 ? 0 : 1; // 0 = Do Not Download, 1 = Normal
     
@@ -112,6 +114,17 @@ const TorrentCard = ({ torrent, onUpdate }) => {
       // Revert on error
       setFiles(prev => prev.map(f => f.index === fileIndex ? { ...f, priority: currentPriority } : f));
     }
+  };
+
+  const toggleFileExpand = (e, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedFiles(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   return (
@@ -217,7 +230,7 @@ const TorrentCard = ({ torrent, onUpdate }) => {
             </div>
             
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Tick the files you want to download. Unticked files will be skipped.
+              Tick the files you want to download. Unticked files will be skipped. Tap a file name to view the full name.
             </p>
 
             {filesLoading ? (
@@ -242,10 +255,23 @@ const TorrentCard = ({ torrent, onUpdate }) => {
                       type="checkbox" 
                       checked={f.priority > 0} 
                       onChange={() => handleToggleFile(f.index, f.priority)} 
-                      style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px' }}
+                      style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', flexShrink: 0 }}
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</span>
+                      <span 
+                        onClick={(e) => toggleFileExpand(e, f.index)}
+                        style={{ 
+                          fontSize: '14px', 
+                          whiteSpace: expandedFiles.has(f.index) ? 'normal' : 'nowrap', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis',
+                          wordBreak: 'break-all',
+                          cursor: 'pointer',
+                          paddingBottom: '2px'
+                        }}
+                      >
+                        {f.name}
+                      </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{formatBytes(f.size)} • {Math.floor(f.progress * 100)}%</span>
                     </div>
                   </label>
