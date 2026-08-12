@@ -17,6 +17,9 @@ const SonarrCard = ({ episode }) => {
     : episode.airDate || 'Unknown Date';
 
   const posterImage = episode.series?.images?.find(img => img.coverType === 'poster');
+  const posterSrc = posterImage ? (posterImage.url || posterImage.remoteUrl) : null;
+
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
@@ -35,11 +38,11 @@ const SonarrCard = ({ episode }) => {
   };
 
   return (
-    <div className="modern-card" style={{ flexWrap: 'wrap' }}>
-      {posterImage && (
+    <div className="modern-card">
+      {posterSrc && (
         <div style={{ flexShrink: 0 }}>
           <img 
-            src={posterImage.url} 
+            src={posterSrc} 
             alt="Poster" 
             style={{ width: '48px', height: '72px', objectFit: 'cover', borderRadius: '4px' }} 
           />
@@ -47,7 +50,11 @@ const SonarrCard = ({ episode }) => {
       )}
       <div className="modern-info">
         <div className="modern-title-row">
-          <h3 style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+          <h3 
+            title={`${seriesTitle} - ${seasonEp}`}
+            className={isTitleExpanded ? 'expanded' : ''}
+            onClick={() => setIsTitleExpanded(!isTitleExpanded)}
+          >
             {seriesTitle} - {seasonEp}
           </h3>
           <span className="modern-status" style={{ color: 'var(--accent-blue)' }}>{episodeTitle}</span>
