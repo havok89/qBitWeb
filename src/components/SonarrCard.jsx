@@ -84,8 +84,12 @@ const SonarrCard = ({ episode }) => {
             </h3>
           </div>
           
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '4px' }}>
-            {seasonEp} • {episodeTitle}
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '2px' }}>
+            {seasonEp}
+          </div>
+          
+          <div style={{ fontSize: '14px', color: 'var(--accent-blue)', fontWeight: 500, marginBottom: '6px' }}>
+            {episodeTitle}
           </div>
           
           <div className="modern-meta-row">
