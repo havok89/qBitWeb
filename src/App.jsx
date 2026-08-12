@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import { checkAuth } from './api';
 
@@ -20,11 +19,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {isAuthenticated ? (
-        <Dashboard />
-      ) : (
-        <Login onLogin={() => setIsAuthenticated(true)} />
-      )}
+      <Dashboard isAuthenticated={isAuthenticated} onLogin={() => setIsAuthenticated(true)} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { getUpcoming, getMissing, getQueue, getRecentlyImported } from '../sonar
 import SonarrCard from './SonarrCard';
 import { Loader2, Tv } from 'lucide-react';
 
-const SonarrList = ({ mode }) => {
+const SonarrList = ({ mode, isAuthenticated }) => {
   const [episodes, setEpisodes] = useState([]);
   const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ const SonarrList = ({ mode }) => {
       return (
         <div className="torrent-list">
           {visibleEpisodes.map(ep => (
-            <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={mode === 'recent'} />
+            <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={!isAuthenticated || mode === 'recent'} />
           ))}
         </div>
       );
@@ -100,7 +100,7 @@ const SonarrList = ({ mode }) => {
             </h3>
             <div className="torrent-list">
               {eps.map(ep => (
-                 <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={mode === 'recent'} />
+                 <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={!isAuthenticated || mode === 'recent'} />
               ))}
             </div>
           </div>

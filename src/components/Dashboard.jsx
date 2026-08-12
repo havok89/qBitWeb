@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TorrentCard from './TorrentCard';
 import SonarrList from './SonarrList';
+import Login from './Login';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories } from '../api';
 import { checkSonarrStatus } from '../sonarrApi';
 import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = ({ isAuthenticated, onLogin }) => {
   const [torrents, setTorrents] = useState([]);
   const [error, setError] = useState(null);
   
@@ -140,7 +141,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {currentView === 'torrents' && (
+        {currentView === 'torrents' && isAuthenticated && (
           <div className="app-actions">
             <button className="icon-btn" onClick={handlePauseAll} title="Stop All" disabled={isPausingAll}>
               {isPausingAll ? <Loader2 size={18} className="spinner" /> : <Square size={18} fill="currentColor" />}
@@ -209,25 +210,29 @@ const Dashboard = () => {
       )}
       
       {currentView === 'torrents' ? (
-        <>
-          {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
+        !isAuthenticated ? (
+          <Login onLogin={onLogin} />
+        ) : (
+          <>
+            {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
 
-          {torrents.length === 0 && !error ? (
-            <div className="empty-state">
-              <DownloadCloud size={48} opacity={0.5} />
-              <h2>No torrents currently queued</h2>
-              <p>Click the + icon above to add a new torrent.</p>
-            </div>
-          ) : (
-            <div className="torrent-list">
-              {torrents.map(t => (
-                <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
-              ))}
-            </div>
-          )}
-        </>
+            {torrents.length === 0 && !error ? (
+              <div className="empty-state">
+                <DownloadCloud size={48} opacity={0.5} />
+                <h2>No torrents currently queued</h2>
+                <p>Click the + icon above to add a new torrent.</p>
+              </div>
+            ) : (
+              <div className="torrent-list">
+                {torrents.map(t => (
+                  <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
+                ))}
+              </div>
+            )}
+          </>
+        )
       ) : (
-        <SonarrList mode={currentView} />
+        <SonarrList mode={currentView} isAuthenticated={isAuthenticated} />
       )}
 
       {/* Add Torrent Modal */}
