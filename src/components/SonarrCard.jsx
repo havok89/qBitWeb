@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud } from 'lucide-react';
 import { searchEpisode } from '../sonarrApi';
 
-const SonarrCard = ({ episode, isDownloading }) => {
+const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchSuccess, setSearchSuccess] = useState(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
@@ -108,17 +108,19 @@ const SonarrCard = ({ episode, isDownloading }) => {
           </div>
         </div>
 
-        <div className="action-buttons">
-          <button 
-            className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
-            onClick={handleSearch} 
-            title="Search for Episode"
-            disabled={isSearching || episode.hasFile || isUnaired || isDownloading}
-            style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
-          </button>
-        </div>
+        {!hideSearch && (
+          <div className="action-buttons">
+            <button 
+              className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
+              onClick={handleSearch} 
+              title="Search for Episode"
+              disabled={isSearching || episode.hasFile || isUnaired || isDownloading}
+              style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
+              {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

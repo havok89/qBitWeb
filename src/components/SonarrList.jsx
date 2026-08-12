@@ -67,7 +67,7 @@ const SonarrList = ({ mode }) => {
       return (
         <div className="torrent-list">
           {visibleEpisodes.map(ep => (
-            <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
+            <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={mode === 'recent'} />
           ))}
         </div>
       );
@@ -100,7 +100,7 @@ const SonarrList = ({ mode }) => {
             </h3>
             <div className="torrent-list">
               {eps.map(ep => (
-                 <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
+                 <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} hideSearch={mode === 'recent'} />
               ))}
             </div>
           </div>
