@@ -12,8 +12,11 @@ qBitWeb replaces the default qBittorrent web interface with a sleek, responsive,
   ### Torrent List
   <img src="./screenshots/torrent-list.png" width="340" alt="Torrent List">
 
-  ### Burger Menu
-  <img src="./screenshots/burger-menu.png" width="340" alt="Burger Menu">
+  ### Torrent List (No Sonarr)
+  <img src="./screenshots/torrent-list-no-sonarr.png" width="340" alt="Torrent List (No Sonarr)">
+
+  ### Bottom Navigation
+  <img src="./screenshots/navigation.png" width="340" alt="Bottom Navigation">
 
   ### Recently Added (Sonarr)
   <img src="./screenshots/recently-added.png" width="340" alt="Recently Added">
@@ -70,13 +73,14 @@ This is the fastest method to install it directly into your existing qBittorrent
 
 Perfect for advanced setups or reverse proxies where you want the UI running in its own isolated container. The Docker image is automatically built and published to the GitHub Container Registry (`ghcr.io`).
 
-1. Run the container and pass in your qBittorrent API URL (and optionally, Sonarr):
+1. Run the container and pass in your qBittorrent API URL:
    ```bash
    docker run -d \
      --name qbitweb \
      --restart unless-stopped \
      -p 3000:80 \
      -e QBITTORRENT_URL=http://192.168.1.100:8080 \
+     # Optional: Remove these two lines if you don't use Sonarr \
      -e SONARR_URL=http://192.168.1.101:8989 \
      -e SONARR_API_KEY=your_sonarr_api_key_here \
      ghcr.io/havok89/qbitweb:latest
@@ -112,7 +116,9 @@ If you want to modify the code or run it locally for testing:
 
 ## Optional Sonarr Integration
 
-qBitWeb can seamlessly connect to your Sonarr instance to display upcoming episodes, missing episodes, and your recent download history directly in the sidebar menu.
+qBitWeb can seamlessly connect to your Sonarr instance to display upcoming episodes, missing episodes, and your recent download history natively within the UI. 
+
+**Note: Sonarr integration is completely optional. The bottom navigation menu will only appear if you configure a Sonarr connection. If left unconfigured, qBitWeb operates purely as a clean, full-screen qBittorrent client.**
 
 To enable this feature, simply add your Sonarr URL and API Key to your `.env` file (if using Docker or Local Development):
 
