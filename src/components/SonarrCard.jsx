@@ -16,6 +16,8 @@ const SonarrCard = ({ episode }) => {
       })
     : episode.airDate || 'Unknown Date';
 
+  const posterImage = episode.series?.images?.find(img => img.coverType === 'poster');
+
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
     setIsSearching(true);
@@ -34,6 +36,15 @@ const SonarrCard = ({ episode }) => {
 
   return (
     <div className="modern-card" style={{ flexWrap: 'wrap' }}>
+      {posterImage && (
+        <div style={{ flexShrink: 0 }}>
+          <img 
+            src={posterImage.url} 
+            alt="Poster" 
+            style={{ width: '48px', height: '72px', objectFit: 'cover', borderRadius: '4px' }} 
+          />
+        </div>
+      )}
       <div className="modern-info">
         <div className="modern-title-row">
           <h3 style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
