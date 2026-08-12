@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud } from 'lucide-react';
 import { searchEpisode } from '../sonarrApi';
 
-const SonarrCard = ({ episode }) => {
+const SonarrCard = ({ episode, isDownloading }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchSuccess, setSearchSuccess] = useState(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
@@ -26,12 +26,14 @@ const SonarrCard = ({ episode }) => {
   const now = new Date();
   const airDate = new Date(episode.airDateUtc);
   const isUnaired = airDate > now;
-  const statusBadge = episode.hasFile ? 'Downloaded' : (isUnaired ? 'Unaired' : 'Missing');
-  const statusColor = episode.hasFile ? '#34C759' : (isUnaired ? 'var(--accent-blue)' : 'var(--danger)');
+  
+  const statusBadge = episode.hasFile ? 'Downloaded' : (isDownloading ? 'Downloading' : (isUnaired ? 'Unaired' : 'Missing'));
+  const statusColor = episode.hasFile ? '#34C759' : (isDownloading ? '#34C759' : (isUnaired ? 'var(--accent-blue)' : 'var(--danger)'));
 
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
     setIsSearching(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 2000));
     try {
       const success = await searchEpisode(episode.id);
       if (success) {
@@ -41,6 +43,7 @@ const SonarrCard = ({ episode }) => {
     } catch (e) {
       console.error(e);
     } finally {
+      await minWait;
       setIsSearching(false);
     }
   };
@@ -99,6 +102,7 @@ const SonarrCard = ({ episode }) => {
               {statusBadge === 'Missing' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
               {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
               {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
+              {statusBadge === 'Downloading' && <DownloadCloud size={14} style={{ marginRight: '4px' }} />}
               {statusBadge}
             </span>
           </div>
@@ -109,8 +113,8 @@ const SonarrCard = ({ episode }) => {
             className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
             onClick={handleSearch} 
             title="Search for Episode"
-            disabled={isSearching || episode.hasFile || isUnaired}
-            style={(episode.hasFile || isUnaired) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            disabled={isSearching || episode.hasFile || isUnaired || isDownloading}
+            style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
           >
             {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
           </button>

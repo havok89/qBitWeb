@@ -37,6 +37,12 @@ export const getMissing = async () => {
   return data.records || [];
 };
 
+export const getQueue = async () => {
+  const res = await fetch('/sonarr/api/v3/queue');
+  const data = await handleResponse(res);
+  return data.records || [];
+};
+
 export const searchEpisode = async (episodeId) => {
   const res = await fetch('/sonarr/api/v3/command', {
     method: 'POST',

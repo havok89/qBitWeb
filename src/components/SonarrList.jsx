@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getUpcoming, getMissing } from '../sonarrApi';
+import { getUpcoming, getMissing, getQueue } from '../sonarrApi';
 import SonarrCard from './SonarrCard';
 import { Loader2, Tv } from 'lucide-react';
 
 const SonarrList = ({ mode }) => {
   const [episodes, setEpisodes] = useState([]);
+  const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -13,8 +14,13 @@ const SonarrList = ({ mode }) => {
       setLoading(true);
       setError('');
       try {
-        const data = mode === 'upcoming' ? await getUpcoming() : await getMissing();
+        const [data, queueData] = await Promise.all([
+          mode === 'upcoming' ? getUpcoming() : getMissing(),
+          getQueue()
+        ]);
         setEpisodes(data);
+        const queueSet = new Set(queueData.map(q => q.episodeId));
+        setDownloadingIds(queueSet);
       } catch (err) {
         setError(err.message || 'Failed to fetch from Sonarr');
       } finally {
@@ -54,7 +60,7 @@ const SonarrList = ({ mode }) => {
   return (
     <div className="torrent-list">
       {episodes.map(ep => (
-        <SonarrCard key={ep.id} episode={ep} />
+        <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
       ))}
     </div>
   );
