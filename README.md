@@ -68,26 +68,28 @@ This is the fastest method to install it directly into your existing qBittorrent
 
 ### Method 2: Standalone Docker Container
 
-Perfect for advanced setups or reverse proxies where you want the UI running in its own isolated container.
+Perfect for advanced setups or reverse proxies where you want the UI running in its own isolated container. The Docker image is automatically built and published to the GitHub Container Registry (`ghcr.io`).
 
-1. Create a `.env` file in the root of the project to tell Docker where your qBittorrent API is located:
-   ```env
-   QBITTORRENT_URL=http://192.168.1.100:8080
-   ```
-2. Build and run the Docker container:
+1. Run the container and pass in your qBittorrent API URL (and optionally, Sonarr):
    ```bash
-   docker build -t qbitweb .
-   docker run -d --name qbitweb --restart unless-stopped -p 3000:80 --env-file .env qbitweb
+   docker run -d \
+     --name qbitweb \
+     --restart unless-stopped \
+     -p 3000:80 \
+     -e QBITTORRENT_URL=http://192.168.1.100:8080 \
+     -e SONARR_URL=http://192.168.1.101:8989 \
+     -e SONARR_API_KEY=your_sonarr_api_key_here \
+     ghcr.io/havok89/qbitweb:latest
    ```
-3. Access the UI at `http://localhost:3000`.
+2. Access the UI at `http://localhost:3000`.
 
 **Updating your Docker container:**
-When you pull new code (or make changes), you need to stop and remove the old container before running the new one:
+When a new release is out, simply pull the latest image and recreate your container:
 ```bash
-docker build -t qbitweb .
+docker pull ghcr.io/havok89/qbitweb:latest
 docker stop qbitweb
 docker rm qbitweb
-docker run -d --name qbitweb --restart unless-stopped -p 3000:80 --env-file .env qbitweb
+# Run the long docker run command from step 1 again!
 ```
 
 ### Method 3: Local Development
