@@ -8,8 +8,10 @@ const SonarrList = ({ mode }) => {
   const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
+    setVisibleCount(10);
     const fetchData = async () => {
       setLoading(true);
       setError('');
@@ -57,11 +59,14 @@ const SonarrList = ({ mode }) => {
     );
   }
 
+  const visibleEpisodes = episodes.slice(0, visibleCount);
+  const hasMore = episodes.length > visibleCount;
+
   const renderList = () => {
     if (mode === 'missing' || mode === 'recent') {
       return (
         <div className="torrent-list">
-          {episodes.map(ep => (
+          {visibleEpisodes.map(ep => (
             <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
           ))}
         </div>
@@ -70,7 +75,7 @@ const SonarrList = ({ mode }) => {
     
     // Grouping for Upcoming
     const grouped = {};
-    episodes.forEach(ep => {
+    visibleEpisodes.forEach(ep => {
       const dateLabel = ep.airDateUtc 
         ? new Date(ep.airDateUtc).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
         : ep.airDate || 'Unknown Date';
@@ -104,7 +109,22 @@ const SonarrList = ({ mode }) => {
     );
   };
 
-  return renderList();
+  return (
+    <div style={{ paddingBottom: '32px' }}>
+      {renderList()}
+      {hasMore && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => setVisibleCount(c => c + 10)}
+            style={{ minWidth: '200px' }}
+          >
+            Show More
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default SonarrList;
