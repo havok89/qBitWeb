@@ -11,6 +11,7 @@ const Dashboard = () => {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [addUrls, setAddUrls] = useState('');
+  const [addFiles, setAddFiles] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   
   const [categories, setCategories] = useState([]);
@@ -88,11 +89,21 @@ const Dashboard = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    if (!addUrls.trim()) return;
+    if (!addUrls.trim() && (!addFiles || addFiles.length === 0)) return;
     
     setIsAdding(true);
     const formData = new FormData();
-    formData.append('urls', addUrls);
+    
+    if (addUrls.trim()) {
+      formData.append('urls', addUrls);
+    }
+    
+    if (addFiles) {
+      for (let i = 0; i < addFiles.length; i++) {
+        formData.append('torrents', addFiles[i]);
+      }
+    }
+    
     if (selectedCategory) {
       formData.append('category', selectedCategory);
     }
@@ -102,6 +113,7 @@ const Dashboard = () => {
     setIsAdding(false);
     setShowAddModal(false);
     setAddUrls('');
+    setAddFiles(null);
     setSelectedCategory('');
     fetchTorrents();
   };
@@ -240,7 +252,24 @@ const Dashboard = () => {
                     fontFamily: 'monospace',
                     resize: 'vertical'
                   }}
-                  required
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Or Upload .torrent Files</label>
+                <input 
+                  type="file" 
+                  multiple 
+                  accept=".torrent"
+                  onChange={(e) => setAddFiles(e.target.files)}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px dashed #555',
+                    background: '#222',
+                    color: '#fff',
+                    cursor: 'pointer'
+                  }}
                 />
               </div>
               
@@ -270,7 +299,7 @@ const Dashboard = () => {
 
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isAdding}>
+                <button type="submit" className="btn btn-primary" disabled={isAdding || (!addUrls.trim() && (!addFiles || addFiles.length === 0))}>
                   {isAdding ? 'Adding...' : 'Add Torrents'}
                 </button>
               </div>
