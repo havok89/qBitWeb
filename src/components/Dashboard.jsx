@@ -33,8 +33,8 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing'
 
   const fetchTorrents = useCallback(async () => {
-    // Only fetch torrents if we are in the torrents view
-    if (currentView !== 'torrents') return;
+    // Only fetch torrents if we are in the torrents view and authenticated
+    if (currentView !== 'torrents' || !isAuthenticated) return;
     try {
       const data = await getTorrents();
       if (Array.isArray(data)) {
@@ -44,7 +44,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
     } catch (err) {
       setError('Failed to connect to qBittorrent');
     }
-  }, [currentView]);
+  }, [currentView, isAuthenticated]);
 
   useEffect(() => {
     const checkSonarr = async () => {
