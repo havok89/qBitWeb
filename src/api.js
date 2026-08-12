@@ -91,3 +91,21 @@ export const addTorrents = async (formData) => {
   });
   return res.ok;
 };
+
+export const getTorrentFiles = async (hash) => {
+  const res = await fetch(`/api/v2/torrents/files?hash=${hash}`);
+  return handleResponse(res);
+};
+
+export const setFilePriority = async (hash, id, priority) => {
+  const params = new URLSearchParams();
+  params.append('hash', hash);
+  params.append('id', id);
+  params.append('priority', priority);
+  const res = await fetch('/api/v2/torrents/filePrio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+  return res.ok;
+};
