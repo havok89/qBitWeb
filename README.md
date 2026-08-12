@@ -2,16 +2,45 @@
 
 A beautiful, modern, and lightweight custom Web UI for qBittorrent, built with React and Vite.
 
-qBitWeb replaces the default qBittorrent web interface with a sleek, responsive, and high-performance React application. It features a modern row-based layout, premium dark mode aesthetics with glassmorphism, and instant optimistic UI feedback.
+qBitWeb replaces the default qBittorrent web interface with a sleek, responsive, and high-performance React application. It features a modern row-based layout, premium dark mode aesthetics with glassmorphism, seamless Sonarr integration, and advanced torrent file management.
+
+## Screenshots
+
+<details>
+  <summary><strong>View Screenshots</strong></summary>
+
+  ### Torrent List
+  <img src="./screenshots/torrent-list.png" width="340" alt="Torrent List">
+
+  ### Burger Menu
+  <img src="./screenshots/burger-menu.png" width="340" alt="Burger Menu">
+
+  ### Recently Added (Sonarr)
+  <img src="./screenshots/recently-added.png" width="340" alt="Recently Added">
+
+  ### Upcoming (Sonarr)
+  <img src="./screenshots/upcoming.png" width="340" alt="Upcoming">
+
+  ### Missing (Sonarr)
+  <img src="./screenshots/missing.png" width="340" alt="Missing">
+
+  ### Add Torrent Popup
+  <img src="./screenshots/add-torrent.png" width="340" alt="Add Torrent">
+
+  ### Torrent File Manager & Search
+  <img src="./screenshots/torrent-file-search.png" width="340" alt="Torrent File Search">
+
+</details>
 
 ## Features
 
 - **Modern Aesthetics**: A beautifully crafted dark mode UI inspired by modern web apps.
-- **Secure Authentication**: Uses qBittorrent's native, secure authentication system.
-- **Global Actions**: Easily stop or start all torrents at once, or add new ones via Magnet links and URLs.
+- **Sonarr Integration**: Connect directly to your Sonarr instance to view Upcoming episodes, Missing episodes, and Recently Added history natively within the UI!
+- **Advanced File Manager**: Open any torrent to view a hierarchical folder tree of its contents. Search, filter, and selectively toggle files or entire directories to download exactly what you want.
+- **Flexible Adding**: Add torrents via Magnet URLs or upload multiple `.torrent` files at once. Optionally assign qBittorrent categories on upload.
+- **Global Actions**: Easily stop or start all torrents at once.
 - **Responsive Layout**: Works flawlessly on both desktop and mobile devices.
 - **Optimistic UI**: Buttons provide instant visual feedback (loading spinners and state changes) for a snappy experience.
-- **Safe Deletions**: Built-in prompts prevent accidental file deletions.
 
 ## Getting Started
 
@@ -78,6 +107,20 @@ If you want to modify the code or run it locally for testing:
    npm run dev
    ```
 4. Open `http://localhost:5173` in your browser.
+
+## Optional Sonarr Integration
+
+qBitWeb can seamlessly connect to your Sonarr instance to display upcoming episodes, missing episodes, and your recent download history directly in the sidebar menu.
+
+To enable this feature, simply add your Sonarr URL and API Key to your `.env` file (if using Docker or Local Development):
+
+```env
+# Sonarr configuration
+SONARR_URL=http://192.168.1.101:8989
+SONARR_API_KEY=your_sonarr_api_key_here
+```
+
+*(Note: For Local Development with Vite, you can optionally prefix these with `VITE_` if needed, but the dev server is configured to automatically pick up `SONARR_URL` and `SONARR_API_KEY` for its proxy as well).*
 
 ## Tech Stack
 
