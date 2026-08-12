@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TorrentCard from './TorrentCard';
 import SonarrList from './SonarrList';
-import { getTorrents, pauseTorrent, resumeTorrent, addTorrents } from '../api';
+import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories } from '../api';
 import { checkSonarrStatus } from '../sonarrApi';
 import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History } from 'lucide-react';
 
@@ -12,6 +12,19 @@ const Dashboard = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addUrls, setAddUrls] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  useEffect(() => {
+    if (showAddModal) {
+      getCategories().then(data => {
+        if (data && typeof data === 'object') {
+          setCategories(Object.keys(data));
+        }
+      }).catch(console.error);
+    }
+  }, [showAddModal]);
 
   // New states for Sonarr integration
   const [sonarrAvailable, setSonarrAvailable] = useState(false);
@@ -80,12 +93,16 @@ const Dashboard = () => {
     setIsAdding(true);
     const formData = new FormData();
     formData.append('urls', addUrls);
+    if (selectedCategory) {
+      formData.append('category', selectedCategory);
+    }
     
     await addTorrents(formData);
     
     setIsAdding(false);
     setShowAddModal(false);
     setAddUrls('');
+    setSelectedCategory('');
     fetchTorrents();
   };
 
@@ -226,6 +243,31 @@ const Dashboard = () => {
                   required
                 />
               </div>
+              
+              {categories.length > 0 && (
+                <div className="input-group">
+                  <label>Category (Optional)</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #333',
+                      background: '#222',
+                      color: '#fff',
+                      width: '100%',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="">None</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={isAdding}>

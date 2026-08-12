@@ -44,6 +44,11 @@ export const getTorrents = async () => {
   return handleResponse(res);
 };
 
+export const getCategories = async () => {
+  const res = await fetch('/api/v2/torrents/categories');
+  return handleResponse(res);
+};
+
 export const pauseTorrent = async (hash) => {
   const params = new URLSearchParams();
   params.append('hashes', hash);
