@@ -106,7 +106,7 @@ const Dashboard = () => {
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming TV' : currentView === 'recent' ? 'Recently TV' : 'Missing TV'}
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : 'Missing'}
             </span>
           </div>
         </div>
@@ -144,30 +144,35 @@ const Dashboard = () => {
               <button className="icon-btn" onClick={() => setIsMenuOpen(false)}><X size={24} /></button>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
                 className={`menu-item-btn ${currentView === 'torrents' ? 'active' : ''}`}
                 onClick={() => changeView('torrents')}
               >
                 <Zap size={20} /> Torrents
               </button>
-              <button 
-                className={`menu-item-btn ${currentView === 'upcoming' ? 'active' : ''}`}
-                onClick={() => changeView('upcoming')}
-              >
-                <Calendar size={20} /> Upcoming TV
-              </button>
+              
+              <div style={{ marginTop: '16px', marginBottom: '4px', paddingLeft: '8px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '1px' }}>
+                Sonarr
+              </div>
+
               <button 
                 className={`menu-item-btn ${currentView === 'recent' ? 'active' : ''}`}
                 onClick={() => changeView('recent')}
               >
-                <History size={20} /> Recently TV
+                <History size={20} /> Recently Added
+              </button>
+              <button 
+                className={`menu-item-btn ${currentView === 'upcoming' ? 'active' : ''}`}
+                onClick={() => changeView('upcoming')}
+              >
+                <Calendar size={20} /> Upcoming
               </button>
               <button 
                 className={`menu-item-btn ${currentView === 'missing' ? 'active' : ''}`}
                 onClick={() => changeView('missing')}
               >
-                <Tv size={20} /> Missing TV
+                <Tv size={20} /> Missing
               </button>
             </div>
           </div>
