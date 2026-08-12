@@ -1,18 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TorrentCard from './TorrentCard';
+import SonarrList from './SonarrList';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents } from '../api';
-import { DownloadCloud, Zap, Play, Square, Plus, Loader2 } from 'lucide-react';
+import { checkSonarrStatus } from '../sonarrApi';
+import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar } from 'lucide-react';
 
 const Dashboard = () => {
   const [torrents, setTorrents] = useState([]);
   const [error, setError] = useState(null);
   
-  // Add Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [addUrls, setAddUrls] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
+  // New states for Sonarr integration
+  const [sonarrAvailable, setSonarrAvailable] = useState(false);
+  const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'missing'
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const fetchTorrents = useCallback(async () => {
+    // Only fetch torrents if we are in the torrents view
+    if (currentView !== 'torrents') return;
     try {
       const data = await getTorrents();
       if (Array.isArray(data)) {
@@ -22,6 +30,14 @@ const Dashboard = () => {
     } catch (err) {
       setError('Failed to connect to qBittorrent');
     }
+  }, [currentView]);
+
+  useEffect(() => {
+    const checkSonarr = async () => {
+      const available = await checkSonarrStatus();
+      setSonarrAvailable(available);
+    };
+    checkSonarr();
   }, []);
 
   useEffect(() => {
@@ -73,45 +89,109 @@ const Dashboard = () => {
     fetchTorrents();
   };
 
+  const changeView = (view) => {
+    setCurrentView(view);
+    setIsMenuOpen(false);
+  };
+
   return (
     <div>
       <header className="app-header">
-        <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Zap size={32} fill="currentColor" />
-          <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>qBitWeb</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {sonarrAvailable && (
+            <button className="icon-btn" onClick={() => setIsMenuOpen(true)} style={{ padding: '4px' }}>
+              <Menu size={28} color="var(--text-primary)" />
+            </button>
+          )}
+          <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={32} fill="currentColor" />
+            <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : 'Missing'}
+            </span>
+          </div>
         </div>
         
-        <div className="app-actions">
-          <button className="icon-btn" onClick={handlePauseAll} title="Stop All" disabled={isPausingAll}>
-            {isPausingAll ? <Loader2 size={18} className="spinner" /> : <Square size={18} fill="currentColor" />}
-          </button>
-          <button className="icon-btn" onClick={handleResumeAll} title="Start All" disabled={isResumingAll}>
-            {isResumingAll ? <Loader2 size={20} className="spinner" /> : <Play size={20} fill="currentColor" />}
-          </button>
-          <button className="icon-btn primary" onClick={() => setShowAddModal(true)} title="Add Torrent">
-            <Plus size={20} strokeWidth={3} />
-          </button>
-        </div>
+        {currentView === 'torrents' && (
+          <div className="app-actions">
+            <button className="icon-btn" onClick={handlePauseAll} title="Stop All" disabled={isPausingAll}>
+              {isPausingAll ? <Loader2 size={18} className="spinner" /> : <Square size={18} fill="currentColor" />}
+            </button>
+            <button className="icon-btn" onClick={handleResumeAll} title="Start All" disabled={isResumingAll}>
+              {isResumingAll ? <Loader2 size={20} className="spinner" /> : <Play size={20} fill="currentColor" />}
+            </button>
+            <button className="icon-btn primary" onClick={() => setShowAddModal(true)} title="Add Torrent">
+              <Plus size={20} strokeWidth={3} />
+            </button>
+          </div>
+        )}
       </header>
-      
-      {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
 
-      {torrents.length === 0 && !error ? (
-        <div className="empty-state">
-          <DownloadCloud size={48} opacity={0.5} />
-          <h2>No torrents currently queued</h2>
-          <p>Click the + icon above to add a new torrent.</p>
+      {/* Side Menu */}
+      {isMenuOpen && (
+        <div className="modal-overlay" onClick={() => setIsMenuOpen(false)} style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+          <div className="menu-sidebar" onClick={e => e.stopPropagation()} style={{
+            background: 'var(--card-bg)',
+            height: '100%',
+            width: '250px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            boxShadow: '2px 0 10px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0 }}>Menu</h2>
+              <button className="icon-btn" onClick={() => setIsMenuOpen(false)}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                className={`menu-item-btn ${currentView === 'torrents' ? 'active' : ''}`}
+                onClick={() => changeView('torrents')}
+              >
+                <Zap size={20} /> Torrents
+              </button>
+              <button 
+                className={`menu-item-btn ${currentView === 'upcoming' ? 'active' : ''}`}
+                onClick={() => changeView('upcoming')}
+              >
+                <Calendar size={20} /> Upcoming
+              </button>
+              <button 
+                className={`menu-item-btn ${currentView === 'missing' ? 'active' : ''}`}
+                onClick={() => changeView('missing')}
+              >
+                <Tv size={20} /> Missing
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+      
+      {currentView === 'torrents' ? (
+        <>
+          {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
+
+          {torrents.length === 0 && !error ? (
+            <div className="empty-state">
+              <DownloadCloud size={48} opacity={0.5} />
+              <h2>No torrents currently queued</h2>
+              <p>Click the + icon above to add a new torrent.</p>
+            </div>
+          ) : (
+            <div className="torrent-list">
+              {torrents.map(t => (
+                <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="torrent-list">
-          {torrents.map(t => (
-            <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
-          ))}
-        </div>
+        <SonarrList mode={currentView} />
       )}
 
       {/* Add Torrent Modal */}
-      {showAddModal && (
+      {showAddModal && currentView === 'torrents' && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Add New Torrent</h3>

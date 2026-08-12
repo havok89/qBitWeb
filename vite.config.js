@@ -17,6 +17,19 @@ export default defineConfig(({ mode }) => {
               proxyReq.setHeader('Origin', options.target);
             });
           }
+        },
+        '/sonarr/api': {
+          target: env.SONARR_URL || env.VITE_SONARR_URL || 'http://localhost:8989',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/sonarr\/api/, '/api'),
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              const apiKey = env.SONARR_API_KEY || env.VITE_SONARR_API_KEY;
+              if (apiKey) {
+                proxyReq.setHeader('X-Api-Key', apiKey);
+              }
+            });
+          }
         }
       }
     }

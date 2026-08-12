@@ -419,3 +419,35 @@ body {
   color: var(--text-secondary);
   cursor: pointer;
 }
+
+/* Sidebar Menu */
+.menu-sidebar {
+  transition: transform 0.3s ease;
+}
+
+.menu-item-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+
+.menu-item-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.menu-item-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
