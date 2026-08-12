@@ -30,8 +30,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
 
   // New states for Sonarr integration
   const [sonarrAvailable, setSonarrAvailable] = useState(false);
-  const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'missing'
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing'
 
   const fetchTorrents = useCallback(async () => {
     // Only fetch torrents if we are in the torrents view
@@ -121,18 +120,12 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
 
   const changeView = (view) => {
     setCurrentView(view);
-    setIsMenuOpen(false);
   };
 
   return (
     <div>
       <header className="app-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {sonarrAvailable && (
-            <button className="icon-btn" onClick={() => setIsMenuOpen(true)} style={{ padding: '4px' }}>
-              <Menu size={28} color="var(--text-primary)" />
-            </button>
-          )}
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
@@ -156,58 +149,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
         )}
       </header>
 
-      {/* Side Menu */}
-      {isMenuOpen && (
-        <div className="modal-overlay" onClick={() => setIsMenuOpen(false)} style={{ alignItems: 'flex-start', justifyContent: 'flex-start' }}>
-          <div className="menu-sidebar" onClick={e => e.stopPropagation()} style={{
-            background: 'var(--card-bg)',
-            height: '100%',
-            width: '250px',
-            padding: '20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px',
-            boxShadow: '2px 0 10px rgba(0,0,0,0.5)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>Menu</h2>
-              <button className="icon-btn" onClick={() => setIsMenuOpen(false)}><X size={24} /></button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button 
-                className={`menu-item-btn ${currentView === 'torrents' ? 'active' : ''}`}
-                onClick={() => changeView('torrents')}
-              >
-                <Zap size={20} /> Torrents
-              </button>
-              
-              <div style={{ marginTop: '16px', marginBottom: '4px', paddingLeft: '8px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 'bold', letterSpacing: '1px' }}>
-                Sonarr
-              </div>
 
-              <button 
-                className={`menu-item-btn ${currentView === 'recent' ? 'active' : ''}`}
-                onClick={() => changeView('recent')}
-              >
-                <History size={20} /> Recently Added
-              </button>
-              <button 
-                className={`menu-item-btn ${currentView === 'upcoming' ? 'active' : ''}`}
-                onClick={() => changeView('upcoming')}
-              >
-                <Calendar size={20} /> Upcoming
-              </button>
-              <button 
-                className={`menu-item-btn ${currentView === 'missing' ? 'active' : ''}`}
-                onClick={() => changeView('missing')}
-              >
-                <Tv size={20} /> Missing
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       
       {currentView === 'torrents' ? (
         !isAuthenticated ? (
@@ -311,6 +253,43 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Bottom Navigation */}
+      {sonarrAvailable && (
+        <nav className="bottom-nav">
+          <button 
+            className={`bottom-nav-btn ${currentView === 'torrents' ? 'active' : ''}`}
+            onClick={() => changeView('torrents')}
+          >
+            <Zap size={24} />
+            <span>Torrents</span>
+          </button>
+          
+          <button 
+            className={`bottom-nav-btn ${currentView === 'recent' ? 'active' : ''}`}
+            onClick={() => changeView('recent')}
+          >
+            <History size={24} />
+            <span>Recent</span>
+          </button>
+          
+          <button 
+            className={`bottom-nav-btn ${currentView === 'upcoming' ? 'active' : ''}`}
+            onClick={() => changeView('upcoming')}
+          >
+            <Calendar size={24} />
+            <span>Upcoming</span>
+          </button>
+          
+          <button 
+            className={`bottom-nav-btn ${currentView === 'missing' ? 'active' : ''}`}
+            onClick={() => changeView('missing')}
+          >
+            <Tv size={24} />
+            <span>Missing</span>
+          </button>
+        </nav>
       )}
     </div>
   );
