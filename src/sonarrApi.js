@@ -43,6 +43,19 @@ export const getQueue = async () => {
   return data.records || [];
 };
 
+export const getRecentlyImported = async () => {
+  const res = await fetch('/sonarr/api/v3/history?pageSize=50&eventType=3&includeSeries=true&includeEpisode=true&sortKey=date&sortDirection=descending');
+  const data = await handleResponse(res);
+  
+  if (!data.records) return [];
+  
+  return data.records.map(record => ({
+    ...record.episode,
+    series: record.series,
+    historyDate: record.date
+  }));
+};
+
 export const searchEpisode = async (episodeId) => {
   const res = await fetch('/sonarr/api/v3/command', {
     method: 'POST',

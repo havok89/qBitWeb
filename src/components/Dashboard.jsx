@@ -3,7 +3,7 @@ import TorrentCard from './TorrentCard';
 import SonarrList from './SonarrList';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents } from '../api';
 import { checkSonarrStatus } from '../sonarrApi';
-import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar } from 'lucide-react';
+import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History } from 'lucide-react';
 
 const Dashboard = () => {
   const [torrents, setTorrents] = useState([]);
@@ -106,7 +106,7 @@ const Dashboard = () => {
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming TV' : 'Missing TV'}
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming TV' : currentView === 'recent' ? 'Recently TV' : 'Missing TV'}
             </span>
           </div>
         </div>
@@ -156,6 +156,12 @@ const Dashboard = () => {
                 onClick={() => changeView('upcoming')}
               >
                 <Calendar size={20} /> Upcoming TV
+              </button>
+              <button 
+                className={`menu-item-btn ${currentView === 'recent' ? 'active' : ''}`}
+                onClick={() => changeView('recent')}
+              >
+                <History size={20} /> Recently TV
               </button>
               <button 
                 className={`menu-item-btn ${currentView === 'missing' ? 'active' : ''}`}

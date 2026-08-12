@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUpcoming, getMissing, getQueue } from '../sonarrApi';
+import { getUpcoming, getMissing, getQueue, getRecentlyImported } from '../sonarrApi';
 import SonarrCard from './SonarrCard';
 import { Loader2, Tv } from 'lucide-react';
 
@@ -15,7 +15,7 @@ const SonarrList = ({ mode }) => {
       setError('');
       try {
         const [data, queueData] = await Promise.all([
-          mode === 'upcoming' ? getUpcoming() : getMissing(),
+          mode === 'recent' ? getRecentlyImported() : (mode === 'upcoming' ? getUpcoming() : getMissing()),
           getQueue()
         ]);
         setEpisodes(data);
@@ -58,7 +58,7 @@ const SonarrList = ({ mode }) => {
   }
 
   const renderList = () => {
-    if (mode === 'missing') {
+    if (mode === 'missing' || mode === 'recent') {
       return (
         <div className="torrent-list">
           {episodes.map(ep => (
