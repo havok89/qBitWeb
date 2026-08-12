@@ -57,13 +57,54 @@ const SonarrList = ({ mode }) => {
     );
   }
 
-  return (
-    <div className="torrent-list">
-      {episodes.map(ep => (
-        <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
-      ))}
-    </div>
-  );
+  const renderList = () => {
+    if (mode === 'missing') {
+      return (
+        <div className="torrent-list">
+          {episodes.map(ep => (
+            <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
+          ))}
+        </div>
+      );
+    }
+    
+    // Grouping for Upcoming
+    const grouped = {};
+    episodes.forEach(ep => {
+      const dateLabel = ep.airDateUtc 
+        ? new Date(ep.airDateUtc).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+        : ep.airDate || 'Unknown Date';
+      
+      if (!grouped[dateLabel]) grouped[dateLabel] = [];
+      grouped[dateLabel].push(ep);
+    });
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {Object.entries(grouped).map(([dateLabel, eps]) => (
+          <div key={dateLabel}>
+            <h3 style={{ 
+              color: 'var(--text-secondary)', 
+              padding: '0 8px', 
+              marginBottom: '12px', 
+              fontSize: '16px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              paddingBottom: '8px'
+            }}>
+              {dateLabel}
+            </h3>
+            <div className="torrent-list">
+              {eps.map(ep => (
+                 <SonarrCard key={ep.id} episode={ep} isDownloading={downloadingIds.has(ep.id)} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return renderList();
 };
 
 export default SonarrList;

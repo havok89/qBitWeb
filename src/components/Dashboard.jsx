@@ -106,7 +106,7 @@ const Dashboard = () => {
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : 'Missing'}
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming TV' : 'Missing TV'}
             </span>
           </div>
         </div>
@@ -155,13 +155,13 @@ const Dashboard = () => {
                 className={`menu-item-btn ${currentView === 'upcoming' ? 'active' : ''}`}
                 onClick={() => changeView('upcoming')}
               >
-                <Calendar size={20} /> Upcoming
+                <Calendar size={20} /> Upcoming TV
               </button>
               <button 
                 className={`menu-item-btn ${currentView === 'missing' ? 'active' : ''}`}
                 onClick={() => changeView('missing')}
               >
-                <Tv size={20} /> Missing
+                <Tv size={20} /> Missing TV
               </button>
             </div>
           </div>
