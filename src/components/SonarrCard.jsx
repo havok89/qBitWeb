@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff } from 'lucide-react';
-import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode } from '../sonarrApi';
+import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue } from '../sonarrApi';
 
 const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [isSearching, setIsSearching] = useState(false);
@@ -13,11 +13,20 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [releases, setReleases] = useState([]);
   const [isLoadingReleases, setIsLoadingReleases] = useState(false);
   const [downloadingGuid, setDownloadingGuid] = useState(null);
+  const [expandedReleases, setExpandedReleases] = useState({});
   
   // Unmonitor state
   const [isUnmonitored, setIsUnmonitored] = useState(false);
   const [isUnmonitoring, setIsUnmonitoring] = useState(false);
   const [showConfirmUnmonitor, setShowConfirmUnmonitor] = useState(false);
+
+  // Status override state
+  const [isPendingDownload, setIsPendingDownload] = useState(false);
+  const [localIsDownloading, setLocalIsDownloading] = useState(isDownloading);
+
+  useEffect(() => {
+    setLocalIsDownloading(isDownloading);
+  }, [isDownloading]);
 
   const seriesTitle = episode.series?.title || 'Unknown Series';
   const episodeTitle = episode.title || 'Unknown Episode';
@@ -39,8 +48,22 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const airDate = new Date(episode.airDateUtc);
   const isUnaired = airDate > now;
   
-  const statusBadge = episode.hasFile ? 'Downloaded' : (isDownloading ? 'Downloading' : (isUnaired ? 'Unaired' : 'Missing'));
-  const statusColor = episode.hasFile ? '#34C759' : (isDownloading ? '#34C759' : (isUnaired ? 'var(--accent-blue)' : 'var(--danger)'));
+  let statusBadge = 'Missing';
+  let statusColor = 'var(--danger)';
+  if (episode.hasFile) {
+    statusBadge = 'Downloaded';
+    statusColor = '#34C759';
+  } else if (localIsDownloading) {
+    statusBadge = 'Downloading';
+    statusColor = 'var(--accent-blue)';
+  } else if (isUnaired) {
+    statusBadge = 'Unaired';
+    statusColor = 'var(--text-secondary)';
+  }
+  
+  if (isPendingDownload) {
+    statusColor = 'var(--accent-blue)';
+  }
 
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
@@ -50,7 +73,22 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
       const success = await searchEpisode(episode.id);
       if (success) {
         setSearchSuccess(true);
+        setIsPendingDownload(true);
         setTimeout(() => setSearchSuccess(false), 5000);
+        
+        // Wait 10 seconds, then check the queue
+        setTimeout(async () => {
+          try {
+            const queue = await getQueue();
+            if (queue.some(q => q.episodeId === episode.id)) {
+              setLocalIsDownloading(true);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsPendingDownload(false);
+          }
+        }, 10000);
       }
     } catch (e) {
       console.error(e);
@@ -80,12 +118,29 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const handleDownloadRelease = async (guid, indexerId) => {
     if (downloadingGuid) return;
     setDownloadingGuid(guid);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1000));
     try {
       const success = await downloadRelease(guid, indexerId);
       if (success) {
+        await minWait;
         setSearchSuccess(true);
         setShowInteractiveModal(false);
+        setIsPendingDownload(true);
         setTimeout(() => setSearchSuccess(false), 5000);
+        
+        // Wait 10 seconds, then check the queue
+        setTimeout(async () => {
+          try {
+            const queue = await getQueue();
+            if (queue.some(q => q.episodeId === episode.id)) {
+              setLocalIsDownloading(true);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsPendingDownload(false);
+          }
+        }, 10000);
       }
     } catch (e) {
       console.error("Failed to download release", e);
@@ -100,6 +155,21 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
     if (gb >= 1) return `${gb.toFixed(1)} GB`;
     const mb = bytes / (1024 * 1024);
     return `${mb.toFixed(0)} MB`;
+  };
+
+  const formatReleaseDate = (release) => {
+    if (release.publishDate) {
+      return new Date(release.publishDate).toLocaleDateString();
+    }
+    if (release.age !== undefined) {
+      if (release.age === 0) return 'Today';
+      return `${release.age} day${release.age === 1 ? '' : 's'} ago`;
+    }
+    return '';
+  };
+
+  const toggleRelease = (guid) => {
+    setExpandedReleases(prev => ({ ...prev, [guid]: !prev[guid] }));
   };
 
   const handleUnmonitor = async () => {
@@ -173,11 +243,17 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
             <span className="meta-text highlight"><Calendar size={14} /> {airDateStr}</span>
             <span className="meta-divider">•</span>
             <span className="meta-text" style={{ color: statusColor, fontWeight: 600 }}>
-              {statusBadge === 'Missing' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
-              {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
-              {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
-              {statusBadge === 'Downloading' && <DownloadCloud size={14} style={{ marginRight: '4px' }} />}
-              {statusBadge}
+              {isPendingDownload ? (
+                <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />
+              ) : (
+                <>
+                  {statusBadge === 'Missing' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Downloading' && <DownloadCloud size={14} style={{ marginRight: '4px' }} />}
+                </>
+              )}
+              {isPendingDownload ? 'Checking...' : statusBadge}
             </span>
           </div>
         </div>
@@ -241,20 +317,27 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
                   {releases.map((release) => (
                     <div key={release.guid} className={`release-item ${release.rejected ? 'rejected' : ''}`}>
                       <div className="release-info">
-                        <div className="release-title" title={release.title}>{release.title}</div>
+                        <div className="release-title" title={release.title}>
+                          {release.title}
+                        </div>
                         <div className="release-meta">
-                          <span className="release-indexer">{release.indexer}</span>
-                          <span className="meta-divider">•</span>
-                          <span className="release-size">{formatSize(release.size)}</span>
-                          <span className="meta-divider">•</span>
-                          <span className="release-peers" style={{ color: release.seeders > 0 ? '#34C759' : 'var(--text-secondary)' }}>
+                          <span className="meta-item release-indexer">{release.indexer}</span>
+                          <span className="meta-item release-size">{formatSize(release.size)}</span>
+                          <span className="meta-item release-peers" style={{ color: release.seeders > 0 ? '#34C759' : 'var(--text-secondary)' }}>
                             {release.seeders} S / {release.leechers} L
                           </span>
+                          {formatReleaseDate(release) && (
+                            <span className="meta-item release-date">{formatReleaseDate(release)}</span>
+                          )}
                         </div>
                         {release.rejected && (
-                          <div className="release-rejected-reason">
-                            <AlertCircle size={12} style={{ marginRight: '4px' }} />
-                            {release.rejections?.join(', ') || 'Rejected by profile'}
+                          <div 
+                            className={`release-rejected-reason ${expandedReleases[release.guid] ? 'expanded' : ''}`}
+                            onClick={() => toggleRelease(release.guid)}
+                            title="Tap to expand"
+                          >
+                            <AlertCircle size={12} style={{ marginRight: '4px', flexShrink: 0 }} />
+                            <span>{release.rejections?.join(', ') || 'Rejected by profile'}</span>
                           </div>
                         )}
                       </div>
