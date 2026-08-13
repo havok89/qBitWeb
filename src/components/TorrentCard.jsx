@@ -406,7 +406,7 @@ const TorrentCard = ({ torrent, onUpdate }) => {
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Delete Torrent</h3>
-            <p>Are you sure you want to remove <strong>{torrent.name}</strong>?</p>
+            <p style={{ wordBreak: 'break-word' }}>Are you sure you want to remove <strong>{torrent.name}</strong>?</p>
             
             <label className="checkbox-group">
               <input 

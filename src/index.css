@@ -145,6 +145,20 @@ body {
   gap: 16px;
 }
 
+.date-group {
+  margin-bottom: 24px;
+}
+
+.date-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  margin-top: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
 /* Modern Row Layout */
 .modern-card {
   background-color: var(--card-bg);
@@ -241,21 +255,7 @@ body {
   overflow-wrap: break-word;
 }
 
-@media (max-width: 600px) {
-  .modern-card {
-    padding: 12px;
-    gap: 12px;
-  }
-  .modern-title-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  .action-buttons {
-    flex-direction: column-reverse;
-    gap: 8px;
-  }
-}
+
 
 .modern-status {
   font-size: 13px;
@@ -614,4 +614,28 @@ body {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-secondary);
   cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .modern-card {
+    padding: 12px;
+    gap: 12px;
+  }
+  .modern-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .media-card-meta {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+  .media-card-meta .meta-divider {
+    display: none;
+  }
+  .action-buttons {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
 }

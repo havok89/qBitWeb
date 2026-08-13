@@ -109,3 +109,18 @@ export const setFilePriority = async (hash, id, priority) => {
   });
   return res.ok;
 };
+export const getPreferences = async () => {
+  const res = await fetch('/api/v2/app/preferences');
+  return handleResponse(res);
+};
+
+export const setPreferences = async (prefs) => {
+  const params = new URLSearchParams();
+  params.append('json', JSON.stringify(prefs));
+  const res = await fetch('/api/v2/app/setPreferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+  return res.ok;
+};

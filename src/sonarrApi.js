@@ -57,6 +57,7 @@ export const getRecentlyImported = async () => {
   
   return data.records.map(record => ({
     ...record.episode,
+    hasFile: true,
     series: record.series,
     historyDate: record.date
   }));
@@ -101,4 +102,42 @@ export const unmonitorEpisode = async (episodeId) => {
     })
   });
   return res.ok;
+};
+
+export const lookupSeries = async (term) => {
+  const res = await fetch(`/sonarr/api/v3/series/lookup?term=${encodeURIComponent(term)}`);
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getSeriesQualityProfiles = async () => {
+  const res = await fetch('/sonarr/api/v3/qualityprofile');
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getSeriesRootFolders = async () => {
+  const res = await fetch('/sonarr/api/v3/rootfolder');
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const addSeries = async (seriesData) => {
+  const res = await fetch('/sonarr/api/v3/series', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(seriesData)
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    if (Array.isArray(errorData) && errorData.length > 0) {
+      throw new Error(errorData[0].errorMessage || 'Failed to add series');
+    } else if (errorData && errorData.message) {
+      throw new Error(errorData.message);
+    }
+    throw new Error('Failed to add series');
+  }
+  
+  return true;
 };

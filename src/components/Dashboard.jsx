@@ -1,22 +1,61 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import TorrentCard from './TorrentCard';
-import SonarrList from './SonarrList';
+import MediaList from './MediaList';
 import Login from './Login';
-import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories } from '../api';
+import AddMediaModal from './AddMediaModal';
+import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences } from '../api';
 import { checkSonarrStatus } from '../sonarrApi';
-import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History } from 'lucide-react';
+import { checkRadarrStatus } from '../radarrApi';
+import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings } from 'lucide-react';
 
 const Dashboard = ({ isAuthenticated, onLogin }) => {
   const [torrents, setTorrents] = useState([]);
   const [error, setError] = useState(null);
   
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddMediaModal, setShowAddMediaModal] = useState(false);
   const [addUrls, setAddUrls] = useState('');
   const [addFiles, setAddFiles] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [dlLimit, setDlLimit] = useState(0);
+  const [upLimit, setUpLimit] = useState(0);
+  const [maxActiveDownloads, setMaxActiveDownloads] = useState(3);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  useEffect(() => {
+    if (showSettingsModal) {
+      getPreferences().then(data => {
+        if (data) {
+          setDlLimit(data.dl_limit ? Math.round(data.dl_limit / 1024) : 0);
+          setUpLimit(data.up_limit ? Math.round(data.up_limit / 1024) : 0);
+          setMaxActiveDownloads(data.max_active_downloads !== undefined ? data.max_active_downloads : 3);
+        }
+      }).catch(console.error);
+    }
+  }, [showSettingsModal]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    try {
+      await setPreferences({
+        dl_limit: dlLimit * 1024,
+        up_limit: upLimit * 1024,
+        max_active_downloads: maxActiveDownloads
+      });
+      setShowSettingsModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   useEffect(() => {
     if (showAddModal) {
@@ -28,8 +67,9 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
     }
   }, [showAddModal]);
 
-  // New states for Sonarr integration
+  // New states for Media integration
   const [sonarrAvailable, setSonarrAvailable] = useState(false);
+  const [radarrAvailable, setRadarrAvailable] = useState(false);
   const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing'
 
   const fetchTorrents = useCallback(async () => {
@@ -47,11 +87,15 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   }, [currentView, isAuthenticated]);
 
   useEffect(() => {
-    const checkSonarr = async () => {
-      const available = await checkSonarrStatus();
-      setSonarrAvailable(available);
+    const checkMediaServers = async () => {
+      const [sAvailable, rAvailable] = await Promise.all([
+        checkSonarrStatus(),
+        checkRadarrStatus()
+      ]);
+      setSonarrAvailable(sAvailable);
+      setRadarrAvailable(rAvailable);
     };
-    checkSonarr();
+    checkMediaServers();
   }, []);
 
   useEffect(() => {
@@ -142,7 +186,18 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
             <button className="icon-btn" onClick={handleResumeAll} title="Start All" disabled={isResumingAll}>
               {isResumingAll ? <Loader2 size={20} className="spinner" /> : <Play size={20} fill="currentColor" />}
             </button>
+            <button className="icon-btn" onClick={() => setShowSettingsModal(true)} title="Settings">
+              <Settings size={20} strokeWidth={2} />
+            </button>
             <button className="icon-btn primary" onClick={() => setShowAddModal(true)} title="Add Torrent">
+              <Plus size={20} strokeWidth={3} />
+            </button>
+          </div>
+        )}
+        
+        {currentView !== 'torrents' && (
+          <div className="app-actions">
+            <button className="icon-btn primary" onClick={() => setShowAddMediaModal(true)} title="Add Media">
               <Plus size={20} strokeWidth={3} />
             </button>
           </div>
@@ -174,7 +229,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           </>
         )
       ) : (
-        <SonarrList mode={currentView} isAuthenticated={isAuthenticated} />
+        <MediaList mode={currentView} isAuthenticated={isAuthenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} />
       )}
 
       {/* Add Torrent Modal */}
@@ -255,8 +310,63 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
         </div>
       )}
 
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Settings</h3>
+            <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="input-group">
+                <label>Max Active Downloads</label>
+                <input 
+                  type="number" 
+                  value={maxActiveDownloads} 
+                  onChange={(e) => setMaxActiveDownloads(Number(e.target.value))}
+                  min="-1"
+                />
+              </div>
+              <div className="input-group" style={{ gap: '4px' }}>
+                <label style={{ marginBottom: '4px' }}>Download Speed Limit (KB/s)</label>
+                <input 
+                  type="number" 
+                  value={dlLimit} 
+                  onChange={(e) => setDlLimit(Number(e.target.value))}
+                  min="0"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
+              </div>
+              <div className="input-group" style={{ gap: '4px' }}>
+                <label style={{ marginBottom: '4px' }}>Upload Speed Limit (KB/s)</label>
+                <input 
+                  type="number" 
+                  value={upLimit} 
+                  onChange={(e) => setUpLimit(Number(e.target.value))}
+                  min="0"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: '8px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSettingsModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
+                  {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Media Modal */}
+      {showAddMediaModal && (
+        <AddMediaModal 
+          onClose={() => setShowAddMediaModal(false)} 
+          initialMode={radarrAvailable && !sonarrAvailable ? 'movie' : 'series'} 
+        />
+      )}
+
       {/* Bottom Navigation */}
-      {sonarrAvailable && (
+      {(sonarrAvailable || radarrAvailable) && (
         <nav className="bottom-nav">
           <button 
             className={`bottom-nav-btn ${currentView === 'torrents' ? 'active' : ''}`}
@@ -286,7 +396,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
             className={`bottom-nav-btn ${currentView === 'missing' ? 'active' : ''}`}
             onClick={() => changeView('missing')}
           >
-            <Tv size={24} />
+            <Film size={24} />
             <span>Missing</span>
           </button>
         </nav>
