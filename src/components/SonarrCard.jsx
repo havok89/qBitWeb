@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download } from 'lucide-react';
-import { searchEpisode, getReleases, downloadRelease } from '../sonarrApi';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff } from 'lucide-react';
+import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode } from '../sonarrApi';
 
 const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [isSearching, setIsSearching] = useState(false);
@@ -13,6 +13,10 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [releases, setReleases] = useState([]);
   const [isLoadingReleases, setIsLoadingReleases] = useState(false);
   const [downloadingGuid, setDownloadingGuid] = useState(null);
+  
+  // Unmonitor state
+  const [isUnmonitored, setIsUnmonitored] = useState(false);
+  const [isUnmonitoring, setIsUnmonitoring] = useState(false);
 
   const seriesTitle = episode.series?.title || 'Unknown Series';
   const episodeTitle = episode.title || 'Unknown Episode';
@@ -97,6 +101,25 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
     return `${mb.toFixed(0)} MB`;
   };
 
+  const handleUnmonitor = async () => {
+    if (isUnmonitoring) return;
+    setIsUnmonitoring(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const success = await unmonitorEpisode(episode.id);
+      if (success) {
+        await minWait;
+        setIsUnmonitored(true);
+      }
+    } catch (e) {
+      console.error("Failed to unmonitor episode", e);
+    } finally {
+      setIsUnmonitoring(false);
+    }
+  };
+
+  if (isUnmonitored) return null;
+
   return (
     <div className="modern-card sonarr-card" style={{ position: 'relative', overflow: 'hidden' }}>
       
@@ -159,6 +182,15 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
 
         {!hideSearch && (
           <div className="action-buttons">
+            <button 
+              className="icon-btn danger" 
+              onClick={handleUnmonitor} 
+              title="Unmonitor (Remove from missing)"
+              disabled={isUnmonitoring || episode.hasFile || isDownloading}
+              style={(episode.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed', marginRight: '4px' } : { marginRight: '4px' }}
+            >
+              {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : <EyeOff size={18} />}
+            </button>
             <button 
               className="icon-btn" 
               onClick={handleInteractiveSearch} 

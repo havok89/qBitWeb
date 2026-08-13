@@ -38,7 +38,7 @@ qBitWeb replaces the default qBittorrent web interface with a sleek, responsive,
 ## Features
 
 - **Modern Aesthetics**: A beautifully crafted dark mode UI inspired by modern web apps.
-- **Sonarr Integration**: Connect directly to your Sonarr instance to view Upcoming episodes, Missing episodes, and Recently Added history natively within the UI! Includes an **Interactive Search** modal to scrape indexers and manually pick the exact release you want to download.
+- **Sonarr Integration**: Connect directly to your Sonarr instance to view Upcoming episodes, Missing episodes, and Recently Added history natively within the UI! Includes an **Interactive Search** modal to scrape indexers and manually pick the exact release you want to download. You can also instantly **Unmonitor** unwanted missing episodes directly from the interface.
 - **Advanced File Manager**: Open any torrent to view a hierarchical folder tree of its contents. Search, filter, and selectively toggle files or entire directories to download exactly what you want.
 - **Flexible Adding**: Add torrents via Magnet URLs or upload multiple `.torrent` files at once. Optionally assign qBittorrent categories on upload.
 - **Global Actions**: Easily stop or start all torrents at once.

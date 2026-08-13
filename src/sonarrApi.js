@@ -90,3 +90,15 @@ export const downloadRelease = async (guid, indexerId) => {
   });
   return res.ok;
 };
+
+export const unmonitorEpisode = async (episodeId) => {
+  const res = await fetch('/sonarr/api/v3/episode/monitor', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      episodeIds: [episodeId],
+      monitored: false
+    })
+  });
+  return res.ok;
+};
