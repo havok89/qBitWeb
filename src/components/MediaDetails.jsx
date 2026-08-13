@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X } from 'lucide-react';
-import { getEpisodes, searchEpisode, updateSeries, getSeriesQualityProfiles } from '../sonarrApi';
+import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
 
@@ -22,8 +22,17 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [searchingIds, setSearchingIds] = useState({});
   const [searchSuccessIds, setSearchSuccessIds] = useState({});
   
+  const [seasonSearchingIds, setSeasonSearchingIds] = useState({});
+  const [seasonSearchSuccessIds, setSeasonSearchSuccessIds] = useState({});
+  
   // Interactive search state per episode
   const [interactiveModalData, setInteractiveModalData] = useState(null); // { item, isRadarr, title }
+
+  // Collapsed seasons state
+  const [collapsedSeasons, setCollapsedSeasons] = useState({});
+  const toggleSeasonCollapse = (seasonNum) => {
+    setCollapsedSeasons(prev => ({ ...prev, [seasonNum]: !prev[seasonNum] }));
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -78,7 +87,16 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       const fetchEpisodes = async () => {
         try {
           const data = await getEpisodes(item.id);
-          setEpisodes(data);
+          setEpisodes(data || []);
+          
+          if (data && data.length > 0) {
+            const seasonNums = [...new Set(data.map(ep => ep.seasonNumber))].sort((a, b) => b - a);
+            const initialCollapsed = {};
+            seasonNums.forEach((sNum, index) => {
+              if (index > 0) initialCollapsed[sNum] = true;
+            });
+            setCollapsedSeasons(initialCollapsed);
+          }
         } catch (e) {
           console.error("Failed to load episodes", e);
         } finally {
@@ -133,6 +151,33 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     }
   };
 
+  const handleSeasonSearch = async (seasonNum) => {
+    if (seasonSearchingIds[seasonNum] || seasonSearchSuccessIds[seasonNum]) return;
+    
+    setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: true }));
+    try {
+      const success = await searchSeason(item.id, seasonNum);
+      if (success) {
+        setSeasonSearchSuccessIds(prev => ({ ...prev, [seasonNum]: true }));
+        setTimeout(() => {
+          setSeasonSearchSuccessIds(prev => ({ ...prev, [seasonNum]: false }));
+        }, 5000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: false }));
+    }
+  };
+
+  const handleSeasonInteractiveSearch = (seasonNum) => {
+    setInteractiveModalData({ 
+      item: { isSeason: true, seriesId: item.id, seasonNumber: seasonNum }, 
+      isRadarr: false, 
+      title: `${item.title} - ${seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}` 
+    });
+  };
+
   const rawPoster = item.images?.find(img => img.coverType === 'poster');
   let posterSrc = rawPoster ? (rawPoster.remoteUrl || rawPoster.url) : null;
   const rawBg = item.images?.find(img => img.coverType === 'fanart');
@@ -155,7 +200,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const sortedSeasons = Object.keys(seasons).map(Number).sort((a, b) => b - a); // Newest season first
 
   return (
-    <div style={{ padding: '0 20px 20px 20px', maxWidth: '1200px', margin: '0 auto', color: '#fff', position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ color: '#fff', position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       
       {/* Background graphic */}
       {bgSrc && (
@@ -258,81 +303,157 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
               const seasonObj = item.seasons?.find(s => s.seasonNumber === seasonNum);
               const isMonitored = seasonObj ? seasonObj.monitored : false;
               
+              const seasonEps = seasons[seasonNum] || [];
+              const totalEps = seasonEps.length;
+              const downloadedEps = seasonEps.filter(ep => ep.hasFile).length;
+              const missingEps = seasonEps.filter(ep => {
+                const now = new Date();
+                const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
+                return !ep.hasFile && !isUnaired;
+              }).length;
+              const unairedEps = seasonEps.filter(ep => {
+                const now = new Date();
+                const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
+                return !ep.hasFile && isUnaired;
+              }).length;
+
+              let seasonStatusText = '';
+              let seasonStatusColor = 'var(--text-secondary)';
+              if (missingEps > 0) {
+                seasonStatusText = `${missingEps} Missing`;
+                seasonStatusColor = 'var(--danger)';
+              } else if (downloadedEps === totalEps && totalEps > 0) {
+                seasonStatusText = 'All Downloaded';
+                seasonStatusColor = '#34C759';
+              } else if (downloadedEps > 0) {
+                seasonStatusText = `${downloadedEps}/${totalEps} Downloaded`;
+                seasonStatusColor = '#34C759';
+              } else if (unairedEps > 0) {
+                seasonStatusText = 'Unaired';
+              }
+              
               return (
               <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-                <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontWeight: '600', fontSize: '18px' }}>
+                <div 
+                  onClick={() => toggleSeasonCollapse(seasonNum)}
+                  style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: '600', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {collapsedSeasons[seasonNum] ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
                     {seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}
                   </div>
-                  <button 
-                    className="icon-btn" 
-                    onClick={() => handleToggleSeasonMonitor(seasonNum)}
-                    title={isMonitored ? "Unmonitor Season" : "Monitor Season"}
-                    style={{ background: 'transparent' }}
-                  >
-                    {isMonitored ? <Eye size={18} color="#34C759" /> : <EyeOff size={18} color="var(--text-secondary)" />}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {seasonStatusText && (
+                      <span style={{ fontSize: '13px', fontWeight: '500', color: seasonStatusColor }}>
+                        {seasonStatusText}
+                      </span>
+                    )}
+                    <button 
+                      className="icon-btn" 
+                      onClick={(e) => { e.stopPropagation(); handleSeasonInteractiveSearch(seasonNum); }} 
+                      title="Interactive Season Search"
+                      style={{ background: 'transparent' }}
+                    >
+                      <List size={18} />
+                    </button>
+                    <button 
+                      className={`icon-btn ${seasonSearchSuccessIds[seasonNum] ? 'primary' : ''}`} 
+                      onClick={(e) => { e.stopPropagation(); handleSeasonSearch(seasonNum); }} 
+                      title="Auto Season Search"
+                      disabled={seasonSearchingIds[seasonNum]}
+                      style={{ background: 'transparent' }}
+                    >
+                      {seasonSearchingIds[seasonNum] ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={seasonSearchSuccessIds[seasonNum] ? 'currentColor' : 'none'} />}
+                    </button>
+                    <button 
+                      className="icon-btn" 
+                      onClick={(e) => { e.stopPropagation(); handleToggleSeasonMonitor(seasonNum); }}
+                      title={isMonitored ? "Unmonitor Season" : "Monitor Season"}
+                      style={{ background: 'transparent' }}
+                    >
+                      {isMonitored ? <Eye size={18} color="var(--accent-blue)" /> : <EyeOff size={18} color="var(--text-secondary)" />}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {seasons[seasonNum].sort((a, b) => a.episodeNumber - b.episodeNumber).map((ep, idx, arr) => {
-                    const now = new Date();
-                    const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
-                    
-                    let statusBadge = 'Missing';
-                    let statusColor = 'var(--danger)';
-                    if (ep.hasFile) {
-                      statusBadge = 'Downloaded';
-                      statusColor = '#34C759';
-                    } else if (isUnaired) {
-                      statusBadge = 'Unaired';
-                      statusColor = 'var(--text-secondary)';
-                    }
-                    
-                    const isLast = idx === arr.length - 1;
-                    
-                    return (
-                      <div key={ep.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ width: '32px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '15px' }}>
-                          {ep.episodeNumber}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: '500', fontSize: '15px', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {ep.title}
-                          </div>
-                          <div style={{ fontSize: '13px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
-                            {statusBadge === 'Missing' && <AlertCircle size={14} />}
-                            {statusBadge === 'Downloaded' && <CheckCircle2 size={14} />}
-                            {statusBadge === 'Unaired' && <Clock size={14} />}
-                            {statusBadge}
-                          </div>
-                        </div>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateRows: collapsedSeasons[seasonNum] ? '0fr' : '1fr', 
+                  transition: 'grid-template-rows 0.3s ease-in-out' 
+                }}>
+                  <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {seasons[seasonNum].sort((a, b) => a.episodeNumber - b.episodeNumber).map((ep, idx, arr) => {
+                        const now = new Date();
+                        const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
                         
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button 
-                            className="icon-btn" 
-                            title="Interactive Search"
-                            disabled={isUnaired}
-                            onClick={() => setInteractiveModalData({ item: ep, isRadarr: false, title: `S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` })}
-                            style={isUnaired ? { opacity: 0.3 } : {}}
-                          >
-                            <List size={18} />
-                          </button>
-                          <button 
-                            className={`icon-btn ${searchSuccessIds[ep.id] ? 'primary' : ''}`} 
-                            title="Auto Search"
-                            disabled={isUnaired || searchingIds[ep.id]}
-                            onClick={() => handleEpisodeSearch(ep.id)}
-                            style={isUnaired ? { opacity: 0.3 } : {}}
-                          >
-                            {searchingIds[ep.id] ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccessIds[ep.id] ? 'currentColor' : 'none'} />}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        let statusBadge = 'Missing';
+                        let statusColor = 'var(--danger)';
+                        if (ep.hasFile) {
+                          statusBadge = 'Downloaded';
+                          statusColor = '#34C759';
+                        } else if (isUnaired) {
+                          statusBadge = 'Unaired';
+                          statusColor = 'var(--text-secondary)';
+                        }
+                        
+                        const isLast = idx === arr.length - 1;
+                        
+                        return (
+                          <div key={ep.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ width: '32px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '15px' }}>
+                              {ep.episodeNumber}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: '500', fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {ep.title}
+                              </div>
+                              {ep.airDateUtc && (
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', marginBottom: '4px' }}>
+                                  {new Date(ep.airDateUtc).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </div>
+                              )}
+                              <div style={{ fontSize: '13px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', marginTop: ep.airDateUtc ? '0' : '4px' }}>
+                                {statusBadge === 'Missing' && <AlertCircle size={14} />}
+                                {statusBadge === 'Downloaded' && <CheckCircle2 size={14} />}
+                                {statusBadge === 'Unaired' && <Clock size={14} />}
+                                {statusBadge}
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                className="icon-btn" 
+                                title="Interactive Search"
+                                disabled={isUnaired}
+                                onClick={() => setInteractiveModalData({ item: ep, isRadarr: false, title: `S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` })}
+                                style={{ opacity: isUnaired ? 0.3 : 1 }}
+                              >
+                                <List size={16} />
+                              </button>
+                              <button 
+                                className="icon-btn" 
+                                title="Auto Search"
+                                disabled={isUnaired || searchingIds[ep.id] || searchSuccessIds[ep.id]}
+                                onClick={() => handleEpisodeSearch(ep.id)}
+                                style={{ opacity: isUnaired ? 0.3 : 1 }}
+                              >
+                                {searchingIds[ep.id] ? (
+                                  <Loader2 size={16} className="spinner" />
+                                ) : searchSuccessIds[ep.id] ? (
+                                  <CheckCircle2 size={16} color="#34C759" />
+                                ) : (
+                                  <Search size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
-            )})
+              );})
           )}
         </div>
       )}

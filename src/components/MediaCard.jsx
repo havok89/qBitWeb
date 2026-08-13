@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff } from 'lucide-react';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff, ChevronRight } from 'lucide-react';
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
 
-const MediaCard = ({ item, isDownloading, hideSearch }) => {
+const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
   
   const [isSearching, setIsSearching] = useState(false);
@@ -251,37 +251,50 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
           </div>
         </div>
 
-        {!hideSearch && (
-          <div className="action-buttons">
+        <div className="action-buttons">
+          {!hideSearch && (
             <button 
               className="icon-btn danger" 
-              onClick={() => setShowConfirmUnmonitor(true)} 
+              onClick={(e) => { e.stopPropagation(); setShowConfirmUnmonitor(true); }} 
               title="Unmonitor (Remove from missing)"
               disabled={isUnmonitoring || item.hasFile || isDownloading}
               style={(item.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : <EyeOff size={18} />}
             </button>
-            <button 
-              className="icon-btn" 
-              onClick={handleInteractiveSearch} 
-              title="Interactive Search"
-              disabled={item.hasFile || isUnaired || isDownloading}
-              style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-            >
-              <List size={18} />
-            </button>
-            <button 
-              className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
-              onClick={handleSearch} 
-              title="Auto Search"
-              disabled={isSearching || item.hasFile || isUnaired || isDownloading}
-              style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-            >
-              {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
-            </button>
-          </div>
-        )}
+          )}
+          <button 
+            type="button"
+            className="icon-btn" 
+            onClick={onSelectMedia}
+            title="View Details"
+            style={{ opacity: 0.8, color: 'var(--text-secondary)' }}
+          >
+            <ChevronRight size={18} />
+          </button>
+          {!hideSearch && (
+            <>
+              <button 
+                className="icon-btn" 
+                onClick={(e) => { e.stopPropagation(); handleInteractiveSearch(); }} 
+                title="Interactive Search"
+                disabled={item.hasFile || isUnaired || isDownloading}
+                style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                <List size={18} />
+              </button>
+              <button 
+                className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
+                onClick={(e) => { e.stopPropagation(); handleSearch(); }} 
+                title="Auto Search"
+                disabled={isSearching || item.hasFile || isUnaired || isDownloading}
+                style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              >
+                {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Interactive Search Modal */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, X, Download, AlertCircle } from 'lucide-react';
-import { getReleases, downloadRelease, getQueue as getSonarrQueue } from '../sonarrApi';
+import { getReleases, getSeasonReleases, downloadRelease, getQueue as getSonarrQueue } from '../sonarrApi';
 import { getMovieReleases, downloadMovieRelease, getMovieQueue } from '../radarrApi';
 
 const InteractiveSearchModal = ({ isOpen, onClose, item, isRadarr, modalTitleDisplay, onSearchSuccess }) => {
@@ -16,7 +16,14 @@ const InteractiveSearchModal = ({ isOpen, onClose, item, isRadarr, modalTitleDis
         setIsLoadingReleases(true);
         setReleases([]);
         try {
-          const data = isRadarr ? await getMovieReleases(item.id) : await getReleases(item.id);
+          let data = [];
+          if (isRadarr) {
+            data = await getMovieReleases(item.id);
+          } else if (item.isSeason) {
+            data = await getSeasonReleases(item.seriesId, item.seasonNumber);
+          } else {
+            data = await getReleases(item.id);
+          }
           const sorted = data.sort((a, b) => b.seeders - a.seeders || b.size - a.size);
           setReleases(sorted);
         } catch (e) {

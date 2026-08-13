@@ -77,8 +77,27 @@ export const searchEpisode = async (episodeId) => {
   return res.ok;
 };
 
+export const searchSeason = async (seriesId, seasonNumber) => {
+  const res = await fetch('/sonarr/api/v3/command', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'SeasonSearch',
+      seriesId: seriesId,
+      seasonNumber: seasonNumber
+    }),
+  });
+  return res.ok;
+};
+
 export const getReleases = async (episodeId) => {
   const res = await fetch(`/sonarr/api/v3/release?episodeId=${episodeId}`);
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getSeasonReleases = async (seriesId, seasonNumber) => {
+  const res = await fetch(`/sonarr/api/v3/release?seriesId=${seriesId}&seasonNumber=${seasonNumber}`);
   const data = await handleResponse(res);
   return Array.isArray(data) ? data : [];
 };

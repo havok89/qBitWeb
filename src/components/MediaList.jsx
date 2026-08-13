@@ -130,11 +130,12 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
             <h3 className="date-header">{date}</h3>
             <div className="torrent-list">
               {items.map(item => (
-                <div key={`${item._type}-${item.id}`} onClick={() => onSelectMedia && onSelectMedia(item, item._type === 'radarr')} style={{ cursor: onSelectMedia ? 'pointer' : 'default' }}>
+                <div key={`${item._type}-${item.id}`}>
                   <MediaCard 
                     item={item} 
                     isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
                     hideSearch={true}
+                    onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
                   />
                 </div>
               ))}
@@ -144,11 +145,12 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
       ) : (
         <div className="torrent-list">
           {mediaItems.slice(0, visibleCount).map(item => (
-            <div key={`${item._type}-${item.id}`} onClick={() => onSelectMedia && onSelectMedia(item, item._type === 'radarr')} style={{ cursor: onSelectMedia ? 'pointer' : 'default' }}>
+            <div key={`${item._type}-${item.id}`}>
               <MediaCard 
                 item={item} 
                 isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
                 hideSearch={mode === 'recent'}
+                onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
               />
             </div>
           ))}

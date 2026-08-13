@@ -47,7 +47,7 @@ const LibraryView = ({ onSelectMedia, isDownloading }) => {
   const displayedLibrary = filteredLibrary.slice(0, visibleCount);
 
   return (
-    <div style={{ padding: '0 20px 20px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
