@@ -338,16 +338,20 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                   onClick={() => toggleSeasonCollapse(seasonNum)}
                   style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
                 >
-                  <div style={{ fontWeight: '600', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {collapsedSeasons[seasonNum] ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
-                    {seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: '600', fontSize: '18px' }}>
+                        {seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}
+                      </span>
+                      {seasonStatusText && (
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: seasonStatusColor, marginTop: '2px' }}>
+                          {seasonStatusText}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {seasonStatusText && (
-                      <span style={{ fontSize: '13px', fontWeight: '500', color: seasonStatusColor }}>
-                        {seasonStatusText}
-                      </span>
-                    )}
                     <button 
                       className="icon-btn" 
                       onClick={(e) => { e.stopPropagation(); handleSeasonInteractiveSearch(seasonNum); }} 
