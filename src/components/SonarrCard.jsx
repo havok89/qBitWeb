@@ -17,6 +17,7 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   // Unmonitor state
   const [isUnmonitored, setIsUnmonitored] = useState(false);
   const [isUnmonitoring, setIsUnmonitoring] = useState(false);
+  const [showConfirmUnmonitor, setShowConfirmUnmonitor] = useState(false);
 
   const seriesTitle = episode.series?.title || 'Unknown Series';
   const episodeTitle = episode.title || 'Unknown Episode';
@@ -103,6 +104,7 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
 
   const handleUnmonitor = async () => {
     if (isUnmonitoring) return;
+    
     setIsUnmonitoring(true);
     const minWait = new Promise(resolve => setTimeout(resolve, 1000));
     try {
@@ -184,10 +186,10 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
           <div className="action-buttons">
             <button 
               className="icon-btn danger" 
-              onClick={handleUnmonitor} 
+              onClick={() => setShowConfirmUnmonitor(true)} 
               title="Unmonitor (Remove from missing)"
               disabled={isUnmonitoring || episode.hasFile || isDownloading}
-              style={(episode.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed', marginRight: '4px' } : { marginRight: '4px' }}
+              style={(episode.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : <EyeOff size={18} />}
             </button>
@@ -196,7 +198,7 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
               onClick={handleInteractiveSearch} 
               title="Interactive Search"
               disabled={episode.hasFile || isUnaired || isDownloading}
-              style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed', marginRight: '4px' } : { marginRight: '4px' }}
+              style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               <List size={18} />
             </button>
@@ -268,6 +270,46 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Confirm Unmonitor Modal */}
+      {showConfirmUnmonitor && createPortal(
+        <div className="modal-overlay" onClick={() => setShowConfirmUnmonitor(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '350px' }}>
+            <div className="modal-header">
+              <h2>Confirm Unmonitor</h2>
+              <button className="icon-btn" onClick={() => setShowConfirmUnmonitor(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="modal-body" style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
+              Are you sure you want to unmonitor <strong>{seriesTitle} - S{String(episode.seasonNumber).padStart(2, '0')}E{String(episode.episodeNumber).padStart(2, '0')} - {episodeTitle}</strong>?
+              <br /><br />
+              It will no longer be searched for and will be removed from your Missing list.
+            </div>
+            
+            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowConfirmUnmonitor(false)}
+                disabled={isUnmonitoring}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={handleUnmonitor}
+                disabled={isUnmonitoring}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                {isUnmonitoring ? <Loader2 size={16} className="spinner" /> : <EyeOff size={16} />}
+                Unmonitor
+              </button>
             </div>
           </div>
         </div>,
