@@ -4,7 +4,7 @@ import { getUpcomingMovies, getMissingMovies, getMovieQueue, getRecentlyImported
 import MediaCard from './MediaCard';
 import { Loader2, Film } from 'lucide-react';
 
-const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable }) => {
+const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, onSelectMedia }) => {
   const [mediaItems, setMediaItems] = useState([]);
   const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -130,12 +130,13 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable }) 
             <h3 className="date-header">{date}</h3>
             <div className="torrent-list">
               {items.map(item => (
-                <MediaCard 
-                  key={`${item._type}-${item.id}`} 
-                  item={item} 
-                  isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
-                  hideSearch={true}
-                />
+                <div key={`${item._type}-${item.id}`} onClick={() => onSelectMedia && onSelectMedia(item, item._type === 'radarr')} style={{ cursor: onSelectMedia ? 'pointer' : 'default' }}>
+                  <MediaCard 
+                    item={item} 
+                    isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
+                    hideSearch={true}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -143,12 +144,13 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable }) 
       ) : (
         <div className="torrent-list">
           {mediaItems.slice(0, visibleCount).map(item => (
-            <MediaCard 
-              key={`${item._type}-${item.id}`} 
-              item={item} 
-              isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
-              hideSearch={mode === 'recent'}
-            />
+            <div key={`${item._type}-${item.id}`} onClick={() => onSelectMedia && onSelectMedia(item, item._type === 'radarr')} style={{ cursor: onSelectMedia ? 'pointer' : 'default' }}>
+              <MediaCard 
+                item={item} 
+                isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
+                hideSearch={mode === 'recent'}
+              />
+            </div>
           ))}
         </div>
       )}

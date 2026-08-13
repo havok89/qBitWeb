@@ -4,9 +4,11 @@ import MediaList from './MediaList';
 import Login from './Login';
 import AddMediaModal from './AddMediaModal';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences } from '../api';
-import { checkSonarrStatus } from '../sonarrApi';
-import { checkRadarrStatus } from '../radarrApi';
-import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings } from 'lucide-react';
+import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
+import { checkRadarrStatus, deleteMovie } from '../radarrApi';
+import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database } from 'lucide-react';
+import LibraryView from './LibraryView';
+import MediaDetails from './MediaDetails';
 
 const Dashboard = ({ isAuthenticated, onLogin }) => {
   const [torrents, setTorrents] = useState([]);
@@ -70,7 +72,26 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   // New states for Media integration
   const [sonarrAvailable, setSonarrAvailable] = useState(false);
   const [radarrAvailable, setRadarrAvailable] = useState(false);
-  const [currentView, setCurrentView] = useState('torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing'
+  const [currentView, setCurrentView] = useState(localStorage.getItem('currentView') || 'torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing' | 'library'
+  const [selectedMediaItem, setSelectedMediaItem] = useState(() => {
+    const saved = localStorage.getItem('selectedMediaItem');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (selectedMediaItem) {
+      localStorage.setItem('selectedMediaItem', JSON.stringify(selectedMediaItem));
+    } else {
+      localStorage.removeItem('selectedMediaItem');
+    }
+  }, [selectedMediaItem]);
 
   const fetchTorrents = useCallback(async () => {
     // Only fetch torrents if we are in the torrents view and authenticated
@@ -164,6 +185,17 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
 
   const changeView = (view) => {
     setCurrentView(view);
+    localStorage.setItem('currentView', view);
+    setSelectedMediaItem(null);
+  };
+
+  const handleDeleteMedia = async (id, isRadarr) => {
+    if (isRadarr) {
+      await deleteMovie(id, true);
+    } else {
+      await deleteSeries(id, true);
+    }
+    setSelectedMediaItem(null); // Return to library after deletion
   };
 
   return (
@@ -173,7 +205,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : 'Missing'}
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : currentView === 'library' ? 'Library' : 'Missing'}
             </span>
           </div>
         </div>
@@ -206,7 +238,14 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
 
 
       
-      {currentView === 'torrents' ? (
+      {selectedMediaItem ? (
+        <MediaDetails 
+          item={selectedMediaItem.item} 
+          isRadarr={selectedMediaItem.isRadarr} 
+          onBack={() => setSelectedMediaItem(null)}
+          onDelete={handleDeleteMedia}
+        />
+      ) : currentView === 'torrents' ? (
         !isAuthenticated ? (
           <Login onLogin={onLogin} />
         ) : (
@@ -228,8 +267,13 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
             )}
           </>
         )
+      ) : currentView === 'library' ? (
+        <LibraryView 
+          onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })}
+          isDownloading={false} 
+        />
       ) : (
-        <MediaList mode={currentView} isAuthenticated={isAuthenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} />
+        <MediaList mode={currentView} isAuthenticated={isAuthenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })} />
       )}
 
       {/* Add Torrent Modal */}
@@ -374,6 +418,14 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           >
             <Zap size={24} />
             <span>Torrents</span>
+          </button>
+
+          <button 
+            className={`bottom-nav-btn ${currentView === 'library' ? 'active' : ''}`}
+            onClick={() => changeView('library')}
+          >
+            <Database size={24} />
+            <span>Library</span>
           </button>
           
           <button 

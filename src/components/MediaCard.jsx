@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff } from 'lucide-react';
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
+import InteractiveSearchModal from './InteractiveSearchModal';
 
 const MediaCard = ({ item, isDownloading, hideSearch }) => {
   const isRadarr = item._type === 'radarr';
@@ -13,10 +14,6 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
   
   // Interactive Search State
   const [showInteractiveModal, setShowInteractiveModal] = useState(false);
-  const [releases, setReleases] = useState([]);
-  const [isLoadingReleases, setIsLoadingReleases] = useState(false);
-  const [downloadingGuid, setDownloadingGuid] = useState(null);
-  const [expandedReleases, setExpandedReleases] = useState({});
   
   // Unmonitor state
   const [isUnmonitored, setIsUnmonitored] = useState(false);
@@ -31,11 +28,21 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
     setLocalIsDownloading(isDownloading);
   }, [isDownloading]);
 
-  const mainTitle = isRadarr ? item.title : (item.series?.title || 'Unknown Series');
-  const subTitle = isRadarr 
-    ? (item.year || '') 
-    : `Season ${item.seasonNumber} - Episode ${String(item.episodeNumber).padStart(2, '0')}`;
-  const itemTitle = isRadarr ? '' : (item.title || 'Unknown Episode');
+  const isSonarrEpisode = !isRadarr && item.series;
+  const isSonarrSeries = !isRadarr && !item.series;
+
+  const mainTitle = isRadarr ? item.title : (isSonarrEpisode ? item.series.title : item.title || 'Unknown Series');
+  
+  let subTitle = '';
+  if (isRadarr) {
+    subTitle = item.year || '';
+  } else if (isSonarrEpisode) {
+    subTitle = `Season ${item.seasonNumber} - Episode ${String(item.episodeNumber).padStart(2, '0')}`;
+  } else if (isSonarrSeries) {
+    subTitle = item.network || (item.year ? `${item.year} Series` : 'Series');
+  }
+
+  const itemTitle = isSonarrEpisode ? (item.title || 'Unknown Episode') : '';
 
   let rawDate = null;
   let dateType = '';
@@ -50,20 +57,23 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
       rawDate = item.inCinemas;
       dateType = 'In Cinemas';
     }
-  } else {
+  } else if (isSonarrEpisode) {
     rawDate = item.airDateUtc;
+  } else if (isSonarrSeries) {
+    rawDate = item.firstAired;
+    dateType = 'First Aired';
   }
 
   const airDateStr = rawDate 
     ? new Date(rawDate).toLocaleDateString(undefined, { 
         weekday: 'short', month: 'short', day: 'numeric', 
-        ...(isRadarr ? {} : { hour: '2-digit', minute: '2-digit' })
+        ...(isSonarrEpisode ? { hour: '2-digit', minute: '2-digit' } : {})
       })
-    : (isRadarr ? 'Unknown Date' : (item.airDate || 'Unknown Date'));
+    : (isRadarr ? 'Unknown Date' : (isSonarrEpisode ? (item.airDate || 'Unknown Date') : 'Unknown Aired Date'));
 
-  const dateLabel = isRadarr && dateType ? `${dateType}: ` : '';
+  const dateLabel = dateType ? `${dateType}: ` : '';
 
-  const images = isRadarr ? item.images : item.series?.images;
+  const images = (isRadarr || isSonarrSeries) ? item.images : item.series?.images;
   const rawPoster = images?.find(img => img.coverType === 'poster');
   let posterSrc = rawPoster ? (rawPoster.remoteUrl || rawPoster.url) : null;
   
@@ -83,15 +93,21 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
   
   let statusBadge = 'Missing';
   let statusColor = 'var(--danger)';
-  if (item.hasFile) {
-    statusBadge = 'Downloaded';
-    statusColor = '#34C759';
-  } else if (localIsDownloading) {
-    statusBadge = 'Downloading';
-    statusColor = 'var(--accent-blue)';
-  } else if (isUnaired) {
-    statusBadge = 'Unaired';
-    statusColor = 'var(--text-secondary)';
+  
+  if (isSonarrSeries) {
+    statusBadge = item.status || 'Continuing';
+    statusColor = statusBadge.toLowerCase() === 'ended' ? 'var(--text-secondary)' : '#34C759';
+  } else {
+    if (item.hasFile) {
+      statusBadge = 'Downloaded';
+      statusColor = '#34C759';
+    } else if (localIsDownloading) {
+      statusBadge = 'Downloading';
+      statusColor = 'var(--accent-blue)';
+    } else if (isUnaired) {
+      statusBadge = 'Unaired';
+      statusColor = 'var(--text-secondary)';
+    }
   }
   
   if (isPendingDownload) {
@@ -133,78 +149,9 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
     }
   };
 
-  const handleInteractiveSearch = async () => {
+  const handleInteractiveSearch = () => {
     if (item.hasFile || isUnaired || isDownloading) return;
     setShowInteractiveModal(true);
-    setIsLoadingReleases(true);
-    setReleases([]);
-    try {
-      const data = isRadarr ? await getMovieReleases(item.id) : await getReleases(item.id);
-      const sorted = data.sort((a, b) => b.seeders - a.seeders || b.size - a.size);
-      setReleases(sorted);
-    } catch (e) {
-      console.error("Failed to get releases", e);
-    } finally {
-      setIsLoadingReleases(false);
-    }
-  };
-
-  const handleDownloadRelease = async (guid, indexerId) => {
-    if (downloadingGuid) return;
-    setDownloadingGuid(guid);
-    const minWait = new Promise(resolve => setTimeout(resolve, 1000));
-    try {
-      const success = isRadarr ? await downloadMovieRelease(guid, indexerId) : await downloadRelease(guid, indexerId);
-      if (success) {
-        await minWait;
-        setSearchSuccess(true);
-        setShowInteractiveModal(false);
-        setIsPendingDownload(true);
-        setTimeout(() => setSearchSuccess(false), 5000);
-        
-        setTimeout(async () => {
-          try {
-            const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
-            if (isRadarr) {
-              if (queue.some(q => q.movieId === item.id)) setLocalIsDownloading(true);
-            } else {
-              if (queue.some(q => q.episodeId === item.id)) setLocalIsDownloading(true);
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsPendingDownload(false);
-          }
-        }, 10000);
-      }
-    } catch (e) {
-      console.error("Failed to download release", e);
-    } finally {
-      setDownloadingGuid(null);
-    }
-  };
-
-  const formatSize = (bytes) => {
-    if (!bytes) return 'Unknown Size';
-    const gb = bytes / (1024 * 1024 * 1024);
-    if (gb >= 1) return `${gb.toFixed(1)} GB`;
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(0)} MB`;
-  };
-
-  const formatReleaseDate = (release) => {
-    if (release.publishDate) {
-      return new Date(release.publishDate).toLocaleDateString();
-    }
-    if (release.age !== undefined) {
-      if (release.age === 0) return 'Today';
-      return `${release.age} day${release.age === 1 ? '' : 's'} ago`;
-    }
-    return '';
-  };
-
-  const toggleRelease = (guid) => {
-    setExpandedReleases(prev => ({ ...prev, [guid]: !prev[guid] }));
   };
 
   const handleUnmonitor = async () => {
@@ -338,72 +285,33 @@ const MediaCard = ({ item, isDownloading, hideSearch }) => {
       </div>
 
       {/* Interactive Search Modal */}
-      {showInteractiveModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowInteractiveModal(false)}>
-          <div className="modal-content interactive-search-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Releases for {modalTitleDisplay}</h2>
-              <button className="icon-btn" onClick={() => setShowInteractiveModal(false)}>
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="modal-body release-list-container">
-              {isLoadingReleases ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
-                  <Loader2 size={32} className="spinner" style={{ marginBottom: '16px' }} />
-                  <div>Searching indexers...</div>
-                </div>
-              ) : releases.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
-                  No releases found.
-                </div>
-              ) : (
-                <div className="release-list">
-                  {releases.map((release) => (
-                    <div key={release.guid} className={`release-item ${release.rejected ? 'rejected' : ''}`}>
-                      <div className="release-info">
-                        <div className="release-title" title={release.title}>
-                          {release.title}
-                        </div>
-                        <div className="release-meta">
-                          <span className="meta-item release-indexer">{release.indexer}</span>
-                          <span className="meta-item release-size">{formatSize(release.size)}</span>
-                          <span className="meta-item release-peers" style={{ color: release.seeders > 0 ? '#34C759' : 'var(--text-secondary)' }}>
-                            {release.seeders} S / {release.leechers} L
-                          </span>
-                          {formatReleaseDate(release) && (
-                            <span className="meta-item release-date">{formatReleaseDate(release)}</span>
-                          )}
-                        </div>
-                        {release.rejected && (
-                          <div 
-                            className={`release-rejected-reason ${expandedReleases[release.guid] ? 'expanded' : ''}`}
-                            onClick={() => toggleRelease(release.guid)}
-                            title="Tap to expand"
-                          >
-                            <AlertCircle size={12} style={{ marginRight: '4px', flexShrink: 0 }} />
-                            <span>{release.rejections?.join(', ') || 'Rejected by profile'}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <button 
-                        className="download-release-btn"
-                        onClick={() => handleDownloadRelease(release.guid, release.indexerId)}
-                        disabled={downloadingGuid === release.guid}
-                      >
-                        {downloadingGuid === release.guid ? <Loader2 size={16} className="spinner" /> : <Download size={16} />}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <InteractiveSearchModal
+        isOpen={showInteractiveModal}
+        onClose={() => setShowInteractiveModal(false)}
+        item={item}
+        isRadarr={isRadarr}
+        modalTitleDisplay={modalTitleDisplay}
+        onSearchSuccess={() => {
+          setSearchSuccess(true);
+          setIsPendingDownload(true);
+          setTimeout(() => setSearchSuccess(false), 5000);
+          
+          setTimeout(async () => {
+            try {
+              const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
+              if (isRadarr) {
+                if (queue.some(q => q.movieId === item.id)) setLocalIsDownloading(true);
+              } else {
+                if (queue.some(q => q.episodeId === item.id)) setLocalIsDownloading(true);
+              }
+            } catch (e) {
+              console.error(e);
+            } finally {
+              setIsPendingDownload(false);
+            }
+          }, 10000);
+        }}
+      />
 
       {/* Confirm Unmonitor Modal */}
       {showConfirmUnmonitor && createPortal(

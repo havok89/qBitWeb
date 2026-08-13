@@ -145,3 +145,29 @@ export const addMovie = async (movieData) => {
   
   return true;
 };
+export const getAllMovies = async () => {
+  const res = await fetch('/radarr/api/v3/movie');
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const deleteMovie = async (movieId, deleteFiles = true) => {
+  const res = await fetch(`/radarr/api/v3/movie/${movieId}?deleteFiles=${deleteFiles}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+
+export const updateMovie = async (movieData) => {
+  const res = await fetch(`/radarr/api/v3/movie/${movieData.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(movieData)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    console.error("Radarr Update Movie Error:", errorData);
+    throw new Error(errorData?.[0]?.errorMessage || `Failed with status ${res.status}`);
+  }
+  return res.json();
+};

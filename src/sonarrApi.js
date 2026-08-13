@@ -141,3 +141,35 @@ export const addSeries = async (seriesData) => {
   
   return true;
 };
+export const getAllSeries = async () => {
+  const res = await fetch('/sonarr/api/v3/series');
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getEpisodes = async (seriesId) => {
+  const res = await fetch(`/sonarr/api/v3/episode?seriesId=${seriesId}`);
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const deleteSeries = async (seriesId, deleteFiles = true) => {
+  const res = await fetch(`/sonarr/api/v3/series/${seriesId}?deleteFiles=${deleteFiles}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+
+export const updateSeries = async (seriesData) => {
+  const res = await fetch(`/sonarr/api/v3/series/${seriesData.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(seriesData)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    console.error("Sonarr Update Series Error:", errorData);
+    throw new Error(errorData?.[0]?.errorMessage || `Failed with status ${res.status}`);
+  }
+  return res.json();
+};
