@@ -28,7 +28,13 @@ export const getUpcoming = async () => {
   const end = nextWeek.toISOString().split('T')[0];
 
   const res = await fetch(`/sonarr/api/v3/calendar?start=${start}&end=${end}&includeSeries=true`);
-  return handleResponse(res);
+  const data = await handleResponse(res);
+  
+  if (!Array.isArray(data)) return [];
+  
+  // Filter out items whose air date has already passed
+  const now = new Date();
+  return data.filter(episode => new Date(episode.airDateUtc) > now);
 };
 
 export const getMissing = async () => {
@@ -66,6 +72,21 @@ export const searchEpisode = async (episodeId) => {
       name: 'EpisodeSearch',
       episodeIds: [episodeId],
     }),
+  });
+  return res.ok;
+};
+
+export const getReleases = async (episodeId) => {
+  const res = await fetch(`/sonarr/api/v3/release?episodeId=${episodeId}`);
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : [];
+};
+
+export const downloadRelease = async (guid, indexerId) => {
+  const res = await fetch('/sonarr/api/v3/release', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guid, indexerId })
   });
   return res.ok;
 };

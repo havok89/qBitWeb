@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud } from 'lucide-react';
-import { searchEpisode } from '../sonarrApi';
+import { createPortal } from 'react-dom';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download } from 'lucide-react';
+import { searchEpisode, getReleases, downloadRelease } from '../sonarrApi';
 
 const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchSuccess, setSearchSuccess] = useState(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  
+  // Interactive Search State
+  const [showInteractiveModal, setShowInteractiveModal] = useState(false);
+  const [releases, setReleases] = useState([]);
+  const [isLoadingReleases, setIsLoadingReleases] = useState(false);
+  const [downloadingGuid, setDownloadingGuid] = useState(null);
 
   const seriesTitle = episode.series?.title || 'Unknown Series';
   const episodeTitle = episode.title || 'Unknown Episode';
@@ -46,6 +53,48 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
       await minWait;
       setIsSearching(false);
     }
+  };
+
+  const handleInteractiveSearch = async () => {
+    if (episode.hasFile || isUnaired || isDownloading) return;
+    setShowInteractiveModal(true);
+    setIsLoadingReleases(true);
+    setReleases([]);
+    try {
+      const data = await getReleases(episode.id);
+      // Sort by seeders desc, then size desc
+      const sorted = data.sort((a, b) => b.seeders - a.seeders || b.size - a.size);
+      setReleases(sorted);
+    } catch (e) {
+      console.error("Failed to get releases", e);
+    } finally {
+      setIsLoadingReleases(false);
+    }
+  };
+
+  const handleDownloadRelease = async (guid, indexerId) => {
+    if (downloadingGuid) return;
+    setDownloadingGuid(guid);
+    try {
+      const success = await downloadRelease(guid, indexerId);
+      if (success) {
+        setSearchSuccess(true);
+        setShowInteractiveModal(false);
+        setTimeout(() => setSearchSuccess(false), 5000);
+      }
+    } catch (e) {
+      console.error("Failed to download release", e);
+    } finally {
+      setDownloadingGuid(null);
+    }
+  };
+
+  const formatSize = (bytes) => {
+    if (!bytes) return 'Unknown Size';
+    const gb = bytes / (1024 * 1024 * 1024);
+    if (gb >= 1) return `${gb.toFixed(1)} GB`;
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(0)} MB`;
   };
 
   return (
@@ -111,9 +160,18 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
         {!hideSearch && (
           <div className="action-buttons">
             <button 
+              className="icon-btn" 
+              onClick={handleInteractiveSearch} 
+              title="Interactive Search"
+              disabled={episode.hasFile || isUnaired || isDownloading}
+              style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed', marginRight: '4px' } : { marginRight: '4px' }}
+            >
+              <List size={18} />
+            </button>
+            <button 
               className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
               onClick={handleSearch} 
-              title="Search for Episode"
+              title="Auto Search"
               disabled={isSearching || episode.hasFile || isUnaired || isDownloading}
               style={(episode.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
@@ -122,6 +180,67 @@ const SonarrCard = ({ episode, isDownloading, hideSearch }) => {
           </div>
         )}
       </div>
+
+      {/* Interactive Search Modal */}
+      {showInteractiveModal && createPortal(
+        <div className="modal-overlay" onClick={() => setShowInteractiveModal(false)}>
+          <div className="modal-content interactive-search-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Releases for S{String(episode.seasonNumber).padStart(2, '0')}E{String(episode.episodeNumber).padStart(2, '0')} - {episodeTitle}</h2>
+              <button className="icon-btn" onClick={() => setShowInteractiveModal(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="modal-body release-list-container">
+              {isLoadingReleases ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+                  <Loader2 size={32} className="spinner" style={{ marginBottom: '16px' }} />
+                  <div>Searching indexers...</div>
+                </div>
+              ) : releases.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+                  No releases found.
+                </div>
+              ) : (
+                <div className="release-list">
+                  {releases.map((release) => (
+                    <div key={release.guid} className={`release-item ${release.rejected ? 'rejected' : ''}`}>
+                      <div className="release-info">
+                        <div className="release-title" title={release.title}>{release.title}</div>
+                        <div className="release-meta">
+                          <span className="release-indexer">{release.indexer}</span>
+                          <span className="meta-divider">•</span>
+                          <span className="release-size">{formatSize(release.size)}</span>
+                          <span className="meta-divider">•</span>
+                          <span className="release-peers" style={{ color: release.seeders > 0 ? '#34C759' : 'var(--text-secondary)' }}>
+                            {release.seeders} S / {release.leechers} L
+                          </span>
+                        </div>
+                        {release.rejected && (
+                          <div className="release-rejected-reason">
+                            <AlertCircle size={12} style={{ marginRight: '4px' }} />
+                            {release.rejections?.join(', ') || 'Rejected by profile'}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <button 
+                        className="download-release-btn"
+                        onClick={() => handleDownloadRelease(release.guid, release.indexerId)}
+                        disabled={downloadingGuid === release.guid}
+                      >
+                        {downloadingGuid === release.guid ? <Loader2 size={16} className="spinner" /> : <Download size={16} />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
