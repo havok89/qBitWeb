@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import Dashboard from './components/Dashboard';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { checkAuth } from './api';
+
+const Dashboard = lazy(() => import('./components/Dashboard'));
 
 function App() {
   const [authStatus, setAuthStatus] = useState({ authenticated: false, hasPasskeys: false, requiresSetup: false });
@@ -27,11 +28,13 @@ function App() {
 
   return (
     <div className="app-container">
-      <Dashboard 
-        authStatus={authStatus} 
-        onLogin={() => setAuthStatus({ ...authStatus, authenticated: true })} 
-        onLogout={() => setAuthStatus({ ...authStatus, authenticated: false })}
-      />
+      <Suspense fallback={<div className="empty-state">Loading module...</div>}>
+        <Dashboard 
+          authStatus={authStatus} 
+          onLogin={() => setAuthStatus({ ...authStatus, authenticated: true })} 
+          onLogout={() => setAuthStatus({ ...authStatus, authenticated: false })}
+        />
+      </Suspense>
     </div>
   );
 }
