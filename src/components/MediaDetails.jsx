@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
@@ -244,36 +244,59 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       </div>
 
       {/* Hero Section */}
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
-        {posterSrc ? (
-          <div style={{ width: '150px', height: '225px', flexShrink: 0, borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-            <LazyImage src={posterSrc} alt="Poster" style={{ width: '100%', height: '100%', borderRadius: '8px' }} />
-          </div>
-        ) : (
-          <div style={{ width: '150px', height: '225px', background: '#333', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ImageIcon size={48} color="#666" />
-          </div>
-        )}
-        <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-            {item.overview || 'No synopsis available.'}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: 'auto' }}>
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
-              {isRadarr ? 'Movie' : 'TV Show'}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px' }}>
+        
+        {/* Top Row: Poster + Synopsis */}
+        <div className="media-details-hero-top">
+          {/* Poster */}
+          {posterSrc ? (
+            <div className="media-details-poster">
+              <LazyImage src={posterSrc} alt="Poster" style={{ width: '100%', height: '100%', borderRadius: '8px' }} />
             </div>
-            {item.status && (
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
-                {item.status}
-              </div>
-            )}
-            {item.network && (
-              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
-                {item.network}
-              </div>
-            )}
+          ) : (
+            <div className="media-details-poster-placeholder">
+              <ImageIcon size={48} color="#666" />
+            </div>
+          )}
+          
+          {/* Synopsis */}
+          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+              {item.overview || 'No synopsis available.'}
+            </div>
           </div>
+        </div>
+
+        {/* Bottom Row: Tags */}
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
+            {isRadarr ? 'Movie' : 'TV Show'}
+          </div>
+          {item.status && (
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
+              {item.status}
+            </div>
+          )}
+          {item.network && (
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
+              {item.network}
+            </div>
+          )}
+          {item.certification && (
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
+              {item.certification}
+            </div>
+          )}
+          {item.ratings && item.ratings.value > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Star size={14} fill="currentColor" /> {item.ratings.value.toFixed(1)}
+            </div>
+          )}
+          {item.genres && item.genres.length > 0 && item.genres.map(genre => (
+            <div key={genre} style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
+              {genre}
+            </div>
+          ))}
         </div>
       </div>
 
