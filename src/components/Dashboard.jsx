@@ -145,7 +145,18 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
   useEffect(() => {
     fetchTorrents();
     const interval = setInterval(fetchTorrents, 2000);
-    return () => clearInterval(interval);
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTorrents();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchTorrents]);
 
   const [isPausingAll, setIsPausingAll] = useState(false);

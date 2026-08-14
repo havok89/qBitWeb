@@ -88,7 +88,19 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
     };
     
     fetchData();
-  }, [mode, sonarrAvailable, radarrAvailable]);
+
+    // Auto-refresh when the app (PWA) is brought back to the foreground
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [mode, isAuthenticated, sonarrAvailable, radarrAvailable]);
 
   useEffect(() => {
     let intervalId;
