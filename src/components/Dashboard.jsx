@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { startRegistration } from '@simplewebauthn/browser';
 import TorrentCard from './TorrentCard';
 import MediaList from './MediaList';
 import Login from './Login';
 import AddMediaModal from './AddMediaModal';
-import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences } from '../api';
+import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences, checkQbittorrentStatus } from '../api';
 import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
 import { checkRadarrStatus, deleteMovie } from '../radarrApi';
 import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database } from 'lucide-react';
 import LibraryView from './LibraryView';
 import MediaDetails from './MediaDetails';
 
-const Dashboard = ({ isAuthenticated, onLogin }) => {
+const Dashboard = ({ authStatus, onLogin, onLogout }) => {
   const [torrents, setTorrents] = useState([]);
   const [error, setError] = useState(null);
   
@@ -23,14 +24,20 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  // Media integration states
+  const [qbittorrentAvailable, setQbittorrentAvailable] = useState(true);
+  const [sonarrAvailable, setSonarrAvailable] = useState(false);
+  const [radarrAvailable, setRadarrAvailable] = useState(false);
+
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [dlLimit, setDlLimit] = useState(0);
   const [upLimit, setUpLimit] = useState(0);
   const [maxActiveDownloads, setMaxActiveDownloads] = useState(3);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [passkeyMsg, setPasskeyMsg] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    if (showSettingsModal) {
+    if (showSettingsModal && qbittorrentAvailable) {
       getPreferences().then(data => {
         if (data) {
           setDlLimit(data.dl_limit ? Math.round(data.dl_limit / 1024) : 0);
@@ -39,10 +46,14 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
         }
       }).catch(console.error);
     }
-  }, [showSettingsModal]);
+  }, [showSettingsModal, qbittorrentAvailable]);
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
+    if (!qbittorrentAvailable) {
+      setShowSettingsModal(false);
+      return;
+    }
     setIsSavingSettings(true);
     try {
       await setPreferences({
@@ -70,8 +81,6 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   }, [showAddModal]);
 
   // New states for Media integration
-  const [sonarrAvailable, setSonarrAvailable] = useState(false);
-  const [radarrAvailable, setRadarrAvailable] = useState(false);
   const [currentView, setCurrentView] = useState(localStorage.getItem('currentView') || 'torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing' | 'library'
   const [selectedMediaItem, setSelectedMediaItem] = useState(() => {
     const saved = localStorage.getItem('selectedMediaItem');
@@ -94,8 +103,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
   }, [selectedMediaItem]);
 
   const fetchTorrents = useCallback(async () => {
-    // Only fetch torrents if we are in the torrents view and authenticated
-    if (currentView !== 'torrents' || !isAuthenticated) return;
+    if (currentView !== 'torrents' || !authStatus?.authenticated) return;
     try {
       const data = await getTorrents();
       if (Array.isArray(data)) {
@@ -103,21 +111,36 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
         setError(null);
       }
     } catch (err) {
-      setError('Failed to connect to qBittorrent');
+      if (err.message === 'Unauthorized' && typeof onLogout === 'function') {
+        onLogout();
+      } else {
+        setError('Failed to connect to qBittorrent');
+      }
     }
-  }, [currentView, isAuthenticated]);
+  }, [currentView, authStatus?.authenticated, onLogout]);
 
   useEffect(() => {
     const checkMediaServers = async () => {
-      const [sAvailable, rAvailable] = await Promise.all([
+      // Don't check if not authenticated
+      if (!authStatus?.authenticated) return;
+      
+      const [sAvailable, rAvailable, qAvailable] = await Promise.all([
         checkSonarrStatus(),
-        checkRadarrStatus()
+        checkRadarrStatus(),
+        checkQbittorrentStatus()
       ]);
       setSonarrAvailable(sAvailable);
       setRadarrAvailable(rAvailable);
+      setQbittorrentAvailable(qAvailable);
+
+      if (!qAvailable && currentView === 'torrents') {
+        if (sAvailable || rAvailable) {
+          setCurrentView('library');
+        }
+      }
     };
     checkMediaServers();
-  }, []);
+  }, [authStatus?.authenticated, currentView]);
 
   useEffect(() => {
     fetchTorrents();
@@ -210,35 +233,40 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           </div>
         </div>
         
-        {currentView === 'torrents' && isAuthenticated && (
-          <div className="app-actions">
-            <button className="icon-btn" onClick={handlePauseAll} title="Stop All" disabled={isPausingAll}>
-              {isPausingAll ? <Loader2 size={18} className="spinner" /> : <Square size={18} fill="currentColor" />}
-            </button>
-            <button className="icon-btn" onClick={handleResumeAll} title="Start All" disabled={isResumingAll}>
-              {isResumingAll ? <Loader2 size={20} className="spinner" /> : <Play size={20} fill="currentColor" />}
-            </button>
-            <button className="icon-btn" onClick={() => setShowSettingsModal(true)} title="Settings">
-              <Settings size={20} strokeWidth={2} />
-            </button>
-            <button className="icon-btn primary" onClick={() => setShowAddModal(true)} title="Add Torrent">
-              <Plus size={20} strokeWidth={3} />
-            </button>
-          </div>
-        )}
-        
-        {currentView !== 'torrents' && (
-          <div className="app-actions">
+        <div className="app-actions">
+          {currentView === 'torrents' && authStatus?.authenticated && qbittorrentAvailable && (
+            <>
+              <button className="icon-btn" onClick={handlePauseAll} title="Stop All" disabled={isPausingAll}>
+                {isPausingAll ? <Loader2 size={18} className="spinner" /> : <Square size={18} fill="currentColor" />}
+              </button>
+              <button className="icon-btn" onClick={handleResumeAll} title="Start All" disabled={isResumingAll}>
+                {isResumingAll ? <Loader2 size={20} className="spinner" /> : <Play size={20} fill="currentColor" />}
+              </button>
+              <button className="icon-btn primary" onClick={() => setShowAddModal(true)} title="Add Torrent">
+                <Plus size={20} strokeWidth={3} />
+              </button>
+            </>
+          )}
+          
+          {currentView !== 'torrents' && (
             <button className="icon-btn primary" onClick={() => setShowAddMediaModal(true)} title="Add Media">
               <Plus size={20} strokeWidth={3} />
             </button>
-          </div>
-        )}
+          )}
+
+          {authStatus?.authenticated && (
+            <button className="icon-btn" onClick={() => setShowSettingsModal(true)} title="Settings">
+              <Settings size={20} strokeWidth={2} />
+            </button>
+          )}
+        </div>
       </header>
 
 
       
-      {selectedMediaItem ? (
+      {!authStatus?.authenticated ? (
+        <Login authStatus={authStatus} onLogin={onLogin} />
+      ) : selectedMediaItem ? (
         <MediaDetails 
           item={selectedMediaItem.item} 
           isRadarr={selectedMediaItem.isRadarr} 
@@ -246,10 +274,7 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           onDelete={handleDeleteMedia}
         />
       ) : currentView === 'torrents' ? (
-        !isAuthenticated ? (
-          <Login onLogin={onLogin} />
-        ) : (
-          <>
+        <>
             {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
 
             {torrents.length === 0 && !error ? (
@@ -266,14 +291,13 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
               </div>
             )}
           </>
-        )
       ) : currentView === 'library' ? (
         <LibraryView 
           onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })}
           isDownloading={false} 
         />
       ) : (
-        <MediaList mode={currentView} isAuthenticated={isAuthenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })} />
+        <MediaList mode={currentView} isAuthenticated={authStatus?.authenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })} />
       )}
 
       {/* Add Torrent Modal */}
@@ -360,41 +384,95 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Settings</h3>
             <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="input-group">
-                <label>Max Active Downloads</label>
-                <input 
-                  type="number" 
-                  value={maxActiveDownloads} 
-                  onChange={(e) => setMaxActiveDownloads(Number(e.target.value))}
-                  min="-1"
-                />
-              </div>
-              <div className="input-group" style={{ gap: '4px' }}>
-                <label style={{ marginBottom: '4px' }}>Download Speed Limit (KB/s)</label>
-                <input 
-                  type="number" 
-                  value={dlLimit} 
-                  onChange={(e) => setDlLimit(Number(e.target.value))}
-                  min="0"
-                />
-                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
-              </div>
-              <div className="input-group" style={{ gap: '4px' }}>
-                <label style={{ marginBottom: '4px' }}>Upload Speed Limit (KB/s)</label>
-                <input 
-                  type="number" 
-                  value={upLimit} 
-                  onChange={(e) => setUpLimit(Number(e.target.value))}
-                  min="0"
-                />
-                <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
-              </div>
+              {qbittorrentAvailable && (
+                <>
+                  <div className="input-group">
+                    <label>Max Active Downloads</label>
+                    <input 
+                      type="number" 
+                      value={maxActiveDownloads} 
+                      onChange={(e) => setMaxActiveDownloads(Number(e.target.value))}
+                      min="-1"
+                    />
+                  </div>
+                  <div className="input-group" style={{ gap: '4px' }}>
+                    <label style={{ marginBottom: '4px' }}>Download Speed Limit (KB/s)</label>
+                    <input 
+                      type="number" 
+                      value={dlLimit} 
+                      onChange={(e) => setDlLimit(Number(e.target.value))}
+                      min="0"
+                    />
+                    <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
+                  </div>
+                  <div className="input-group" style={{ gap: '4px' }}>
+                    <label style={{ marginBottom: '4px' }}>Upload Speed Limit (KB/s)</label>
+                    <input 
+                      type="number" 
+                      value={upLimit} 
+                      onChange={(e) => setUpLimit(Number(e.target.value))}
+                      min="0"
+                    />
+                    <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
+                  </div>
+                </>
+              )}
 
+              {passkeyMsg.text && (
+                <div style={{
+                  padding: '10px',
+                  borderRadius: '8px',
+                  backgroundColor: passkeyMsg.type === 'success' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 77, 77, 0.1)',
+                  color: passkeyMsg.type === 'success' ? '#4caf50' : '#ff4d4d',
+                  border: `1px solid ${passkeyMsg.type === 'success' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 77, 77, 0.2)'}`,
+                  fontSize: '0.9rem',
+                  textAlign: 'center'
+                }}>
+                  {passkeyMsg.text}
+                </div>
+              )}
+
+              <div className="modal-actions" style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <button type="button" className="btn btn-secondary" onClick={async () => {
+                    setPasskeyMsg({ text: '', type: '' });
+                    try {
+                      const res = await fetch('/api/auth/webauthn/generate-registration-options');
+                      const options = await res.json();
+                      const attResp = await startRegistration(options);
+                      const verifyRes = await fetch('/api/auth/webauthn/verify-registration', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(attResp),
+                      });
+                      const verification = await verifyRes.json();
+                      if (verification.verified) {
+                        setPasskeyMsg({ text: 'Passkey registered successfully!', type: 'success' });
+                      } else {
+                        setPasskeyMsg({ text: 'Failed to register Passkey.', type: 'error' });
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      let errorMsg = err.message || 'Unknown error';
+                      if (errorMsg.toLowerCase().includes('not supported in this browser') || errorMsg.toLowerCase().includes('supported')) {
+                        errorMsg = 'WebAuthn (Passkeys) requires a secure HTTPS connection (or localhost) on mobile devices. Please access qBitWeb via a reverse proxy with SSL enabled.';
+                      }
+                      setPasskeyMsg({ text: 'Failed to register Passkey: ' + errorMsg, type: 'error' });
+                    }
+                  }}>
+                    Add Passkey
+                  </button>
+                </div>
+              </div>
               <div className="modal-actions" style={{ marginTop: '8px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowSettingsModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
-                  {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSettingsModal(false)}>
+                  {qbittorrentAvailable ? 'Cancel' : 'Close'}
                 </button>
+                {qbittorrentAvailable && (
+                  <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
+                    {isSavingSettings ? 'Saving...' : 'Save Settings'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
@@ -412,13 +490,15 @@ const Dashboard = ({ isAuthenticated, onLogin }) => {
       {/* Bottom Navigation */}
       {(sonarrAvailable || radarrAvailable) && (
         <nav className="bottom-nav">
-          <button 
-            className={`bottom-nav-btn ${currentView === 'torrents' ? 'active' : ''}`}
-            onClick={() => changeView('torrents')}
-          >
-            <Zap size={24} />
-            <span>Torrents</span>
-          </button>
+          {qbittorrentAvailable && (
+            <button 
+              className={`bottom-nav-btn ${currentView === 'torrents' ? 'active' : ''}`}
+              onClick={() => changeView('torrents')}
+            >
+              <Zap size={24} />
+              <span>Torrents</span>
+            </button>
+          )}
 
           <button 
             className={`bottom-nav-btn ${currentView === 'library' ? 'active' : ''}`}

@@ -4,8 +4,9 @@ import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCl
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
+import LazyImage from './LazyImage';
 
-const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
+const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
   
   const [isSearching, setIsSearching] = useState(false);
@@ -22,11 +23,11 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
 
   // Status override state
   const [isPendingDownload, setIsPendingDownload] = useState(false);
-  const [localIsDownloading, setLocalIsDownloading] = useState(isDownloading);
+  const [localQueueStatus, setLocalQueueStatus] = useState(queueStatus);
 
   useEffect(() => {
-    setLocalIsDownloading(isDownloading);
-  }, [isDownloading]);
+    setLocalQueueStatus(queueStatus);
+  }, [queueStatus]);
 
   const isSonarrEpisode = !isRadarr && item.series;
   const isSonarrSeries = !isRadarr && !item.series;
@@ -73,37 +74,56 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
 
   const dateLabel = dateType ? `${dateType}: ` : '';
 
+  const radarrMovieId = isRadarr ? item.id : null;
+  const sonarrSeriesId = !isRadarr ? (isSonarrSeries ? item.id : (item.seriesId || item.series?.id)) : null;
+
   const images = (isRadarr || isSonarrSeries) ? item.images : item.series?.images;
   const rawPoster = images?.find(img => img.coverType === 'poster');
-  let posterSrc = rawPoster ? (rawPoster.remoteUrl || rawPoster.url) : null;
-  
   const rawBg = images?.find(img => img.coverType === 'fanart');
-  let bgSrc = rawBg ? (rawBg.remoteUrl || rawBg.url) : null;
 
-  // Rewrite image URLs for proxy
-  if (posterSrc && posterSrc.includes('/MediaCover')) {
-    posterSrc = posterSrc.replace(/.*\/MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
-  }
-  if (bgSrc && bgSrc.includes('/MediaCover')) {
-    bgSrc = bgSrc.replace(/.*\/MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+  let posterSrc = rawPoster ? (rawPoster.url || rawPoster.remoteUrl) : null;
+  let bgSrc = rawBg ? (rawBg.url || rawBg.remoteUrl) : null;
+
+  if (isRadarr && radarrMovieId && radarrMovieId > 0) {
+    posterSrc = `/radarr-media/${radarrMovieId}/poster.jpg`;
+    bgSrc = `/radarr-media/${radarrMovieId}/fanart.jpg`;
+  } else if (!isRadarr && sonarrSeriesId && sonarrSeriesId > 0) {
+    posterSrc = `/sonarr-media/${sonarrSeriesId}/poster.jpg`;
+    bgSrc = `/sonarr-media/${sonarrSeriesId}/fanart.jpg`;
+  } else {
+    if (posterSrc && posterSrc.includes('MediaCover')) {
+      posterSrc = posterSrc.replace(/.*MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+    }
+    if (bgSrc && bgSrc.includes('MediaCover')) {
+      bgSrc = bgSrc.replace(/.*MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+    }
   }
 
   const now = new Date();
   const isUnaired = rawDate ? new Date(rawDate) > now : false;
   
+  const isDownloading = !!localQueueStatus;
+
   let statusBadge = 'Missing';
   let statusColor = 'var(--danger)';
+  let spinnerColor = null;
   
   if (isSonarrSeries) {
-    statusBadge = item.status || 'Continuing';
+    const rawStatus = item.status || 'Continuing';
+    statusBadge = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
     statusColor = statusBadge.toLowerCase() === 'ended' ? 'var(--text-secondary)' : '#34C759';
   } else {
     if (item.hasFile) {
       statusBadge = 'Downloaded';
       statusColor = '#34C759';
-    } else if (localIsDownloading) {
+    } else if (localQueueStatus === 'importing') {
+      statusBadge = 'Importing';
+      statusColor = '#A855F7';
+      spinnerColor = '#A855F7';
+    } else if (localQueueStatus === 'downloading') {
       statusBadge = 'Downloading';
       statusColor = 'var(--accent-blue)';
+      spinnerColor = 'var(--accent-blue)';
     } else if (isUnaired) {
       statusBadge = 'Unaired';
       statusColor = 'var(--text-secondary)';
@@ -112,6 +132,7 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
   
   if (isPendingDownload) {
     statusColor = 'var(--accent-blue)';
+    spinnerColor = 'var(--accent-blue)';
   }
 
   const handleSearch = async () => {
@@ -129,10 +150,9 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
         setTimeout(async () => {
           try {
             const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
-            if (isRadarr) {
-              if (queue.some(q => q.movieId === item.id)) setLocalIsDownloading(true);
-            } else {
-              if (queue.some(q => q.episodeId === item.id)) setLocalIsDownloading(true);
+            const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
+            if (matchedQ) {
+              setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
             }
           } catch (e) {
             console.error(e);
@@ -186,25 +206,17 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
       
       {/* Background Image with Overlay */}
       {bgSrc && (
-        <div style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: `url(${bgSrc})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.15,
-          zIndex: 0
-        }} />
+        <LazyImage src={bgSrc} isBackground={true} backgroundOpacity={0.15} />
       )}
 
       {/* Content wrapper to stay above the background */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', width: '100%', gap: '20px', alignItems: 'center' }}>
+      <div className="media-card-content">
         {posterSrc && (
           <div style={{ flexShrink: 0 }}>
-            <img 
+            <LazyImage 
               src={posterSrc} 
               alt="Poster" 
-              style={{ width: '64px', height: '97px', objectFit: 'cover', borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} 
+              className="media-card-poster"
             />
           </div>
         )}
@@ -220,12 +232,12 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
             </h3>
           </div>
           
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '2px' }}>
+          <div className="media-card-subtitle">
             {subTitle}
           </div>
           
           {itemTitle && (
-            <div style={{ fontSize: '14px', color: 'var(--accent-blue)', fontWeight: 500, marginBottom: '6px' }}>
+            <div className="media-card-itemtitle">
               {itemTitle}
             </div>
           )}
@@ -244,6 +256,7 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
                   {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Downloading' && <DownloadCloud size={14} style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                 </>
               )}
               {isPendingDownload ? 'Checking...' : statusBadge}
@@ -312,10 +325,9 @@ const MediaCard = ({ item, isDownloading, hideSearch, onSelectMedia }) => {
           setTimeout(async () => {
             try {
               const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
-              if (isRadarr) {
-                if (queue.some(q => q.movieId === item.id)) setLocalIsDownloading(true);
-              } else {
-                if (queue.some(q => q.episodeId === item.id)) setLocalIsDownloading(true);
+              const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
+              if (matchedQ) {
+                setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
               }
             } catch (e) {
               console.error(e);

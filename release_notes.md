@@ -1,6 +1,7 @@
 ## What's New in v1.5.0-beta.1 🎉
 
 ### Major Features
+- **PWA Homescreen Install**: You can now pin qBitWeb to your iOS or Android homescreen! It runs seamlessly as a standalone app with a native full-screen experience and custom icons. 📱
 - **Radarr Integration**: Full support for Radarr! Your library, missing, recent, and upcoming views now seamlessly combine movies alongside your TV shows. 🍿
 - **Interactive Season Search**: You can now perform interactive searches for entire seasons directly from the season headers on the details page. 
 - **Auto Season Search**: Added one-click auto-search for complete seasons. 

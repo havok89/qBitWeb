@@ -13,30 +13,35 @@ const handleResponse = async (res) => {
 
 export const checkAuth = async () => {
   try {
-    // A simple endpoint to check if we are authenticated
+    const res = await fetch('/api/auth/status');
+    return await res.json();
+  } catch (err) {
+    return { authenticated: false, hasPasskeys: false, requiresSetup: false };
+  }
+};
+
+export const setupLogin = async (password) => {
+  const res = await fetch('/api/auth/setup-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  
+  if (res.ok) return true;
+  throw new Error('Invalid setup password');
+};
+
+export const logout = async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+};
+
+export const checkQbittorrentStatus = async () => {
+  try {
     const res = await fetch('/api/v2/app/version');
     return res.status === 200;
   } catch (err) {
     return false;
   }
-};
-
-export const login = async (username, password) => {
-  const params = new URLSearchParams();
-  params.append('username', username);
-  params.append('password', password);
-
-  const res = await fetch('/api/v2/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-  
-  const result = await res.text();
-  if (result === 'Ok.') return true;
-  throw new Error('Login failed');
 };
 
 export const getTorrents = async () => {

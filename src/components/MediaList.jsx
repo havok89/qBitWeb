@@ -6,10 +6,11 @@ import { Loader2, Film } from 'lucide-react';
 
 const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, onSelectMedia }) => {
   const [mediaItems, setMediaItems] = useState([]);
-  const [downloadingIds, setDownloadingIds] = useState(new Set());
+  const [queueStatusMap, setQueueStatusMap] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     setVisibleCount(10);
@@ -66,11 +67,19 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
 
         setMediaItems(mergedData);
 
-        const queueSet = new Set([
-          ...sonarrQueue.map(q => `sonarr-${q.episodeId}`),
-          ...radarrQueue.map(q => `radarr-${q.movieId}`)
-        ]);
-        setDownloadingIds(queueSet);
+        const newQueueMap = new Map();
+        
+        sonarrQueue.forEach(q => {
+          const status = q.status === 'completed' ? 'importing' : 'downloading';
+          newQueueMap.set(`sonarr-${q.episodeId}`, status);
+        });
+        
+        radarrQueue.forEach(q => {
+          const status = q.status === 'completed' ? 'importing' : 'downloading';
+          newQueueMap.set(`radarr-${q.movieId}`, status);
+        });
+
+        setQueueStatusMap(newQueueMap);
       } catch (err) {
         setError(err.message || 'Failed to fetch from media servers');
       } finally {
@@ -80,6 +89,42 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
     
     fetchData();
   }, [mode, sonarrAvailable, radarrAvailable]);
+
+  useEffect(() => {
+    let intervalId;
+    if (queueStatusMap.size > 0) {
+      intervalId = setInterval(async () => {
+        try {
+          const promises = [];
+          if (sonarrAvailable) promises.push(getQueue().catch(() => []));
+          else promises.push(Promise.resolve([]));
+          
+          if (radarrAvailable) promises.push(getMovieQueue().catch(() => []));
+          else promises.push(Promise.resolve([]));
+          
+          const [sonarrQueue, radarrQueue] = await Promise.all(promises);
+          
+          const newQueueMap = new Map();
+          sonarrQueue.forEach(q => {
+            const status = q.status === 'completed' ? 'importing' : 'downloading';
+            newQueueMap.set(`sonarr-${q.episodeId}`, status);
+          });
+          
+          radarrQueue.forEach(q => {
+            const status = q.status === 'completed' ? 'importing' : 'downloading';
+            newQueueMap.set(`radarr-${q.movieId}`, status);
+          });
+
+          setQueueStatusMap(newQueueMap);
+        } catch (e) {
+          console.error("Background queue refresh failed", e);
+        }
+      }, 10000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [queueStatusMap.size, sonarrAvailable, radarrAvailable]);
 
   if (loading) {
     return (
@@ -111,9 +156,15 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
   }
 
   // Upcoming groups by day, Missing/Recent are just lists
-  let grouped = {};
+  const filteredItems = mediaItems.filter(item => {
+    if (filter === 'movies' && item._type !== 'radarr') return false;
+    if (filter === 'tv' && item._type !== 'sonarr') return false;
+    return true;
+  });
+
+  const grouped = {};
   if (mode === 'upcoming') {
-    mediaItems.forEach(item => {
+    filteredItems.forEach(item => {
       const dateStr = item._type === 'radarr' 
         ? new Date(item.digitalRelease || item.physicalRelease || item.inCinemas).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
         : new Date(item.airDateUtc).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
@@ -124,6 +175,31 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
 
   return (
     <div className="sonarr-list-container">
+      {(mode === 'missing' || mode === 'recent') && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', justifyContent: 'center' }}>
+          {['all', 'movies', 'tv'].map(f => (
+            <button 
+              key={f}
+              onClick={() => { setFilter(f); setVisibleCount(10); }}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '20px',
+                border: 'none',
+                background: filter === f ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                color: filter === f ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '14px',
+                textTransform: 'capitalize',
+                transition: 'all 0.2s'
+              }}
+            >
+              {f === 'tv' ? 'TV Shows' : f}
+            </button>
+          ))}
+        </div>
+      )}
+      
       {mode === 'upcoming' ? (
         Object.entries(grouped).map(([date, items]) => (
           <div key={date} className="date-group">
@@ -133,7 +209,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
                 <div key={`${item._type}-${item.id}`}>
                   <MediaCard 
                     item={item} 
-                    isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
+                    queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)}
                     hideSearch={true}
                     onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
                   />
@@ -144,11 +220,11 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
         ))
       ) : (
         <div className="torrent-list">
-          {mediaItems.slice(0, visibleCount).map(item => (
+          {filteredItems.slice(0, visibleCount).map(item => (
             <div key={`${item._type}-${item.id}`}>
               <MediaCard 
                 item={item} 
-                isDownloading={downloadingIds.has(`${item._type}-${item.id}`)}
+                queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)}
                 hideSearch={mode === 'recent'}
                 onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
               />
@@ -157,7 +233,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
         </div>
       )}
       
-      {mode !== 'upcoming' && visibleCount < mediaItems.length && (
+      {mode !== 'upcoming' && visibleCount < filteredItems.length && (
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
           <button className="btn btn-secondary" onClick={() => setVisibleCount(v => v + 20)}>
             Load More

@@ -44,7 +44,7 @@ export const getMissing = async () => {
 };
 
 export const getQueue = async () => {
-  const res = await fetch('/sonarr/api/v3/queue');
+  const res = await fetch('/sonarr/api/v3/queue?page=1&pageSize=1000');
   const data = await handleResponse(res);
   return data.records || [];
 };

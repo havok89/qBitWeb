@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, Ch
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
+import LazyImage from './LazyImage';
 
 const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [localItem, setLocalItem] = useState(initialItem);
@@ -92,8 +93,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
           if (data && data.length > 0) {
             const seasonNums = [...new Set(data.map(ep => ep.seasonNumber))].sort((a, b) => b - a);
             const initialCollapsed = {};
-            seasonNums.forEach((sNum, index) => {
-              if (index > 0) initialCollapsed[sNum] = true;
+            seasonNums.forEach(sNum => {
+              if (seasonNums.length > 1) {
+                initialCollapsed[sNum] = true;
+              }
             });
             setCollapsedSeasons(initialCollapsed);
           }
@@ -178,16 +181,28 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     });
   };
 
-  const rawPoster = item.images?.find(img => img.coverType === 'poster');
-  let posterSrc = rawPoster ? (rawPoster.remoteUrl || rawPoster.url) : null;
-  const rawBg = item.images?.find(img => img.coverType === 'fanart');
-  let bgSrc = rawBg ? (rawBg.remoteUrl || rawBg.url) : null;
+  const radarrMovieId = isRadarr ? item.id : null;
+  const sonarrSeriesId = !isRadarr ? item.id : null;
 
-  if (posterSrc && posterSrc.includes('/MediaCover')) {
-    posterSrc = posterSrc.replace(/.*\/MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
-  }
-  if (bgSrc && bgSrc.includes('/MediaCover')) {
-    bgSrc = bgSrc.replace(/.*\/MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+  const rawPoster = item.images?.find(img => img.coverType === 'poster');
+  const rawBg = item.images?.find(img => img.coverType === 'fanart');
+
+  let posterSrc = rawPoster ? (rawPoster.url || rawPoster.remoteUrl) : null;
+  let bgSrc = rawBg ? (rawBg.url || rawBg.remoteUrl) : null;
+
+  if (isRadarr && radarrMovieId && radarrMovieId > 0) {
+    posterSrc = `/radarr-media/${radarrMovieId}/poster.jpg`;
+    bgSrc = `/radarr-media/${radarrMovieId}/fanart.jpg`;
+  } else if (!isRadarr && sonarrSeriesId && sonarrSeriesId > 0) {
+    posterSrc = `/sonarr-media/${sonarrSeriesId}/poster.jpg`;
+    bgSrc = `/sonarr-media/${sonarrSeriesId}/fanart.jpg`;
+  } else {
+    if (posterSrc && posterSrc.includes('MediaCover')) {
+      posterSrc = posterSrc.replace(/.*MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+    }
+    if (bgSrc && bgSrc.includes('MediaCover')) {
+      bgSrc = bgSrc.replace(/.*MediaCover/, isRadarr ? '/radarr-media' : '/sonarr-media');
+    }
   }
 
   // Group episodes by season
@@ -200,20 +215,16 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const sortedSeasons = Object.keys(seasons).map(Number).sort((a, b) => b - a); // Newest season first
 
   return (
-    <div style={{ color: '#fff', position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div className="media-details-container" style={{ color: '#fff', position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
       {/* Background graphic */}
       {bgSrc && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: `url(${bgSrc})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.1,
-          zIndex: -1,
-          pointerEvents: 'none'
-        }} />
+        <LazyImage 
+          src={bgSrc} 
+          isBackground={true} 
+          backgroundOpacity={0.1} 
+          style={{ position: 'fixed', zIndex: -1, pointerEvents: 'none' }}
+        />
       )}
 
       {/* Header */}
@@ -235,7 +246,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       {/* Hero Section */}
       <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
         {posterSrc ? (
-          <img src={posterSrc} alt="Poster" style={{ width: '150px', height: '225px', objectFit: 'cover', borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)' }} />
+          <div style={{ width: '150px', height: '225px', flexShrink: 0, borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+            <LazyImage src={posterSrc} alt="Poster" style={{ width: '100%', height: '100%', borderRadius: '8px' }} />
+          </div>
         ) : (
           <div style={{ width: '150px', height: '225px', background: '#333', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ImageIcon size={48} color="#666" />
@@ -333,7 +346,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
               }
               
               return (
-              <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+              <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
                 <div 
                   onClick={() => toggleSeasonCollapse(seasonNum)}
                   style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
@@ -386,7 +399,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                 }}>
                   <div style={{ overflow: 'hidden', minHeight: 0 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {seasons[seasonNum].sort((a, b) => a.episodeNumber - b.episodeNumber).map((ep, idx, arr) => {
+                      {seasons[seasonNum].sort((a, b) => b.episodeNumber - a.episodeNumber).map((ep, idx, arr) => {
                         const now = new Date();
                         const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
                         

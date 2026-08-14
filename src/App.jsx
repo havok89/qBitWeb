@@ -3,13 +3,21 @@ import Dashboard from './components/Dashboard';
 import { checkAuth } from './api';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authStatus, setAuthStatus] = useState({ authenticated: false, hasPasskeys: false, requiresSetup: false });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth().then(auth => {
-      setIsAuthenticated(auth);
+    checkAuth().then(status => {
+      setAuthStatus(status);
       setLoading(false);
+      
+      const splash = document.getElementById('initial-splash');
+      if (splash) {
+        setTimeout(() => {
+          splash.style.opacity = '0';
+          setTimeout(() => splash.remove(), 500);
+        }, 1000);
+      }
     });
   }, []);
 
@@ -19,7 +27,11 @@ function App() {
 
   return (
     <div className="app-container">
-      <Dashboard isAuthenticated={isAuthenticated} onLogin={() => setIsAuthenticated(true)} />
+      <Dashboard 
+        authStatus={authStatus} 
+        onLogin={() => setAuthStatus({ ...authStatus, authenticated: true })} 
+        onLogout={() => setAuthStatus({ ...authStatus, authenticated: false })}
+      />
     </div>
   );
 }
