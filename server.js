@@ -19,8 +19,17 @@ const port = process.env.PORT || 80;
 const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const RP_NAME = 'qBitWeb';
-const RP_ID = process.env.RP_ID || 'localhost'; // Should be domain name in production
-const ORIGIN = process.env.ORIGIN || (RP_ID === 'localhost' ? `http://localhost:${port}` : `https://${RP_ID}`);
+
+// Derive RP_ID and ORIGIN dynamically from request headers so passkeys work on any domain
+const getWebAuthnParams = (req) => {
+  const host = req.get('host') || 'localhost';
+  const hostname = host.split(':')[0];
+  const protocol = req.get('x-forwarded-proto') || req.protocol || 'http';
+  return {
+    rpID: process.env.RP_ID || hostname,
+    origin: process.env.ORIGIN || `${protocol}://${host}`,
+  };
+};
 
 const QBITTORRENT_URL = (process.env.QBITTORRENT_URL || 'http://localhost:8080').replace(/\/$/, '');
 const SONARR_URL = (process.env.SONARR_URL || 'http://localhost:8989').replace(/\/$/, '');
@@ -159,11 +168,12 @@ app.get('/api/auth/status', (req, res) => {
 });
 
 app.get('/api/auth/webauthn/generate-registration-options', requireAuth, async (req, res) => {
+  const { rpID } = getWebAuthnParams(req);
   const user = { id: 'admin', username: 'admin' };
   const userID = new Uint8Array(Buffer.from(user.id));
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
-    rpID: RP_ID,
+    rpID,
     userID: userID,
     userName: user.username,
     attestationType: 'none',
@@ -176,12 +186,13 @@ app.get('/api/auth/webauthn/generate-registration-options', requireAuth, async (
 app.post('/api/auth/webauthn/verify-registration', requireAuth, async (req, res) => {
   const body = req.body;
   const expectedChallenge = currentChallenges['admin'];
+  const { rpID, origin } = getWebAuthnParams(req);
   try {
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
     });
     if (verification.verified) {
       saveAuthenticator({
@@ -203,8 +214,9 @@ app.post('/api/auth/webauthn/verify-registration', requireAuth, async (req, res)
 app.get('/api/auth/webauthn/generate-authentication-options', async (req, res) => {
   const authenticators = getAuthenticators();
   if (authenticators.length === 0) return res.status(400).json({ error: 'No passkeys registered' });
+  const { rpID } = getWebAuthnParams(req);
   const options = await generateAuthenticationOptions({
-    rpID: RP_ID,
+    rpID,
     allowCredentials: authenticators.map(auth => ({
       id: auth.credentialID,
       type: 'public-key',
@@ -222,12 +234,13 @@ app.post('/api/auth/webauthn/verify-authentication', async (req, res) => {
   const authenticators = getAuthenticators();
   const authenticator = authenticators.find(auth => auth.credentialID === body.id);
   if (!authenticator) return res.status(400).json({ error: 'Authenticator not registered' });
+  const { rpID, origin } = getWebAuthnParams(req);
   try {
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
       credential: {
         id: authenticator.credentialID,
         publicKey: authenticator.credentialPublicKey,
