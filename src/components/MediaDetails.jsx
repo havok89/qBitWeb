@@ -131,6 +131,23 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     setIsDeleting(false);
   };
 
+  const fetchQueue = async () => {
+    if (!isRadarr) {
+      try {
+        const queueData = await getQueue().catch(() => []);
+        const qMap = new Map();
+        (queueData || []).forEach(q => {
+          const status = q.status === 'completed' ? 'importing' : 'downloading';
+          const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
+          qMap.set(q.episodeId, { status, pct });
+        });
+        setEpisodeQueueMap(qMap);
+      } catch (err) {
+        console.error("Failed to fetch queue", err);
+      }
+    }
+  };
+
   const handleEpisodeSearch = async (episodeId) => {
     if (searchingIds[episodeId] || searchSuccessIds[episodeId]) return;
     
@@ -139,9 +156,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       const success = await searchEpisode(episodeId);
       if (success) {
         setSearchSuccessIds(prev => ({ ...prev, [episodeId]: true }));
-        setTimeout(() => {
+        setTimeout(async () => {
+          await fetchQueue();
           setSearchSuccessIds(prev => ({ ...prev, [episodeId]: false }));
-        }, 5000);
+        }, 10000);
       }
     } catch (e) {
       console.error(e);
@@ -158,9 +176,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       const success = await searchMovie(item.id);
       if (success) {
         setSearchSuccessIds(prev => ({ ...prev, [item.id]: true }));
-        setTimeout(() => {
+        setTimeout(async () => {
+          await fetchQueue();
           setSearchSuccessIds(prev => ({ ...prev, [item.id]: false }));
-        }, 5000);
+        }, 10000);
       }
     } catch (e) {
       console.error(e);
@@ -452,7 +471,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         
                         let statusBadge = 'Missing';
                         let statusColor = 'var(--danger)';
-                        if (ep.hasFile) {
+                        
+                        if (searchingIds[ep.id] || searchSuccessIds[ep.id]) {
+                          statusBadge = 'Searching...';
+                          statusColor = 'var(--accent-blue)';
+                        } else if (ep.hasFile) {
                           statusBadge = 'Downloaded';
                           statusColor = '#34C759';
                         } else if (isUnaired) {
@@ -488,6 +511,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 {statusBadge === 'Unaired' && <Clock size={14} />}
                                 {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" />}
                                 {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" />}
+                                {statusBadge === 'Searching...' && <Loader2 size={14} className="spinner" />}
                                 {statusBadge}
                                 {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct > 0 && (
                                   <span style={{ opacity: 0.7, fontWeight: '400' }}>{episodeQueueMap.get(ep.id).pct}%</span>

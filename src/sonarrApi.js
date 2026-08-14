@@ -49,7 +49,7 @@ export const getMissing = async () => {
 };
 
 export const getQueue = async () => {
-  const res = await fetch('/sonarr/api/v3/queue?page=1&pageSize=1000');
+  const res = await fetch(`/sonarr/api/v3/queue?page=1&pageSize=1000&_t=${Date.now()}`, { cache: 'no-store' });
   const data = await handleResponse(res);
   return data.records || [];
 };
@@ -172,7 +172,7 @@ export const getAllSeries = async () => {
 };
 
 export const getEpisodes = async (seriesId) => {
-  const res = await fetch(`/sonarr/api/v3/episode?seriesId=${seriesId}`);
+  const res = await fetch(`/sonarr/api/v3/episode?seriesId=${seriesId}&_t=${Date.now()}`, { cache: 'no-store' });
   const data = await handleResponse(res);
   return Array.isArray(data) ? data : [];
 };

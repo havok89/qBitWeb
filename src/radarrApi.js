@@ -54,7 +54,7 @@ export const getMissingMovies = async () => {
 };
 
 export const getMovieQueue = async () => {
-  const res = await fetch('/radarr/api/v3/queue');
+  const res = await fetch(`/radarr/api/v3/queue?page=1&pageSize=1000&_t=${Date.now()}`, { cache: 'no-store' });
   const data = await handleResponse(res);
   return data.records || [];
 };

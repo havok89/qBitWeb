@@ -156,6 +156,10 @@ app.get('/api/auth/status', (req, res) => {
   const token = req.cookies.qbitweb_session;
   const hasAuthenticators = getAuthenticators().length > 0;
   
+  if (!AUTH_PASSWORD && !hasAuthenticators) {
+    return res.json({ authenticated: true, hasPasskeys: false, requiresSetup: false });
+  }
+
   if (!token) {
     return res.json({ authenticated: false, hasPasskeys: hasAuthenticators, requiresSetup: !hasAuthenticators && !!AUTH_PASSWORD });
   }

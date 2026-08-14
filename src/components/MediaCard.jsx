@@ -170,7 +170,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
   };
 
   const handleInteractiveSearch = () => {
-    if (item.hasFile || isUnaired || isDownloading) return;
+    if (item.hasFile || isUnaired) return;
     setShowInteractiveModal(true);
   };
 
@@ -291,8 +291,8 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
                 className="icon-btn" 
                 onClick={(e) => { e.stopPropagation(); handleInteractiveSearch(); }} 
                 title="Interactive Search"
-                disabled={item.hasFile || isUnaired || isDownloading}
-                style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                disabled={item.hasFile || isUnaired}
+                style={(item.hasFile || isUnaired) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 <List size={18} />
               </button>

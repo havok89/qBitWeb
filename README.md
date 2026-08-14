@@ -68,7 +68,6 @@ docker run -d \
   --name qbitweb \
   --restart unless-stopped \
   -p 3000:80 \
-  -e AUTH_PASSWORD=optional_secure_password \
   -e QBITTORRENT_URL=http://192.168.1.100:8080 \
   -e QBITTORRENT_USERNAME=admin \
   -e QBITTORRENT_PASSWORD=adminadmin \
