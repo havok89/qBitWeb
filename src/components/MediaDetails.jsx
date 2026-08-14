@@ -317,7 +317,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
 
       {/* Content Section */}
       {isRadarr ? (
-        <div className="modern-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px' }}>
+        <div className="modern-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px', background: 'rgba(20,20,20,0.85)' }}>
           <h3 style={{ margin: 0, textAlign: 'left' }}>Movie Management</h3>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 auto', color: 'var(--text-secondary)', textAlign: 'left' }}>
@@ -388,10 +388,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
               }
               
               return (
-              <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+              <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0, background: 'rgba(20,20,20,0.85)' }}>
                 <div 
                   onClick={() => toggleSeasonCollapse(seasonNum)}
-                  style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                  style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {collapsedSeasons[seasonNum] ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
