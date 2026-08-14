@@ -24,16 +24,6 @@ const LazyImage = ({ src, alt, className, style, isBackground = false, backgroun
   if (isBackground) {
     return (
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none', ...style }} className={className}>
-        {/* Spinner */}
-        {!loaded && !error && (
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1
-          }}>
-            <Loader2 size={32} className="spinner" style={{ color: 'var(--accent-blue)', opacity: 0.5 }} />
-          </div>
-        )}
-        
         {/* Background Image Container */}
         <div 
           style={{
