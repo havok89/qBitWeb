@@ -289,7 +289,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
           </div>
           {item.status && (
             <div style={{ background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', fontWeight: '500' }}>
-              {item.status}
+              {item.status.toLowerCase() === 'incinemas' 
+                ? 'In Cinemas' 
+                : item.status.toLowerCase() === 'tba'
+                ? 'TBA'
+                : item.status.charAt(0).toUpperCase() + item.status.slice(1)}
             </div>
           )}
           {item.network && (
