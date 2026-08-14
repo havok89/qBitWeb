@@ -187,7 +187,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
 
   return (
     <div className="sonarr-list-container">
-      {(mode === 'missing' || mode === 'recent') && (
+      {(mode === 'missing' || mode === 'recent') && sonarrAvailable && radarrAvailable && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', justifyContent: 'center' }}>
           {['all', 'movies', 'tv'].map(f => (
             <button 

@@ -108,6 +108,8 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
     }
   }, [currentView, authStatus?.authenticated, onLogout]);
 
+  const [hasCheckedServers, setHasCheckedServers] = useState(false);
+
   useEffect(() => {
     const checkMediaServers = async () => {
       // Don't check if not authenticated
@@ -121,15 +123,24 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
       setSonarrAvailable(sAvailable);
       setRadarrAvailable(rAvailable);
       setQbittorrentAvailable(qAvailable);
-
-      if (!qAvailable && currentView === 'torrents') {
-        if (sAvailable || rAvailable) {
-          navigate('/library');
-        }
-      }
+      setHasCheckedServers(true);
     };
     checkMediaServers();
-  }, [authStatus?.authenticated, currentView, navigate]);
+  }, [authStatus?.authenticated]);
+
+  useEffect(() => {
+    if (authStatus?.authenticated && hasCheckedServers) {
+      if (!qbittorrentAvailable && currentView === 'torrents') {
+        if (sonarrAvailable || radarrAvailable) {
+          navigate('/library');
+        }
+      } else if (!sonarrAvailable && !radarrAvailable && currentView !== 'torrents') {
+        if (qbittorrentAvailable) {
+          navigate('/');
+        }
+      }
+    }
+  }, [currentView, qbittorrentAvailable, sonarrAvailable, radarrAvailable, authStatus?.authenticated, hasCheckedServers, navigate]);
 
   useEffect(() => {
     fetchTorrents();
@@ -278,6 +289,8 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
             <LibraryView 
               onSelectMedia={(item, isRadarr) => navigate(`/media/${isRadarr ? 'movie' : 'series'}/${item.id}`)}
               isDownloading={false} 
+              sonarrAvailable={sonarrAvailable}
+              radarrAvailable={radarrAvailable}
             />
           } />
           
@@ -481,6 +494,8 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
         <AddMediaModal 
           onClose={() => setShowAddMediaModal(false)} 
           initialMode={radarrAvailable && !sonarrAvailable ? 'movie' : 'series'} 
+          sonarrAvailable={sonarrAvailable}
+          radarrAvailable={radarrAvailable}
         />
       )}
 

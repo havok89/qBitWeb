@@ -3,7 +3,7 @@ import { Search, Loader2, X, Image as ImageIcon, Film, Tv, ArrowLeft } from 'luc
 import { lookupMovie, getMovieQualityProfiles, getMovieRootFolders, addMovie } from '../radarrApi';
 import { lookupSeries, getSeriesQualityProfiles, getSeriesRootFolders, addSeries } from '../sonarrApi';
 
-const AddMediaModal = ({ onClose, initialMode = 'movie' }) => {
+const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true, radarrAvailable = true }) => {
   const [mode, setMode] = useState(initialMode); // 'movie' or 'series'
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -121,22 +121,24 @@ const AddMediaModal = ({ onClose, initialMode = 'movie' }) => {
 
   const renderSearchFlow = () => (
     <>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
-        <button 
-          className={`btn ${mode === 'movie' ? 'btn-primary' : 'btn-secondary'}`} 
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          onClick={() => { setMode('movie'); setResults([]); setSelectedItem(null); }}
-        >
-          <Film size={18} /> Movie
-        </button>
-        <button 
-          className={`btn ${mode === 'series' ? 'btn-primary' : 'btn-secondary'}`} 
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          onClick={() => { setMode('series'); setResults([]); setSelectedItem(null); }}
-        >
-          <Tv size={18} /> TV Show
-        </button>
-      </div>
+      {radarrAvailable && sonarrAvailable && (
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+          <button 
+            className={`btn ${mode === 'movie' ? 'btn-primary' : 'btn-secondary'}`} 
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            onClick={() => { setMode('movie'); setResults([]); setSelectedItem(null); }}
+          >
+            <Film size={18} /> Movie
+          </button>
+          <button 
+            className={`btn ${mode === 'series' ? 'btn-primary' : 'btn-secondary'}`} 
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            onClick={() => { setMode('series'); setResults([]); setSelectedItem(null); }}
+          >
+            <Tv size={18} /> TV Show
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
         <input 

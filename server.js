@@ -272,7 +272,9 @@ app.use('/api', requireAuth, createProxyMiddleware({
       attachQbitCookie(proxyReq, req, res);
     },
     error: (err, req, res) => {
-      console.error(`[Proxy Error] qBittorrent on ${req.url}:`, err.message);
+      if (err.code !== 'ECONNREFUSED') {
+        console.error(`[Proxy Error] qBittorrent on ${req.url}:`, err.message);
+      }
       if (!res.headersSent) res.status(502).json({ error: 'Proxy Error' });
     }
   }
@@ -286,7 +288,12 @@ app.use('/sonarr/api', requireAuth, createProxyMiddleware({
     proxyReq: (proxyReq) => {
       proxyReq.setHeader('X-Api-Key', SONARR_API_KEY);
     },
-    error: (err, req, res) => console.error(`[Proxy Error] Sonarr on ${req.url}:`, err.message)
+    error: (err, req, res) => {
+      if (err.code !== 'ECONNREFUSED') {
+        console.error(`[Proxy Error] Sonarr on ${req.url}:`, err.message);
+      }
+      if (!res.headersSent) res.status(502).json({ error: 'Proxy Error' });
+    }
   }
 }));
 
@@ -296,7 +303,12 @@ app.use('/radarr/api', requireAuth, createProxyMiddleware({
   pathRewrite: (path, req) => req.originalUrl.replace(/^\/radarr\/api/, '/api'),
   on: {
     proxyReq: (proxyReq) => proxyReq.setHeader('X-Api-Key', RADARR_API_KEY),
-    error: (err, req, res) => console.error('Radarr Proxy Error:', err.message)
+    error: (err, req, res) => {
+      if (err.code !== 'ECONNREFUSED') {
+        console.error('Radarr Proxy Error:', err.message);
+      }
+      if (!res.headersSent) res.status(502).json({ error: 'Proxy Error' });
+    }
   }
 }));
 
@@ -309,7 +321,13 @@ app.use('/sonarr-media', requireAuth, createProxyMiddleware({
     return newPath;
   },
   on: {
-    proxyReq: (proxyReq) => proxyReq.setHeader('X-Api-Key', SONARR_API_KEY)
+    proxyReq: (proxyReq) => proxyReq.setHeader('X-Api-Key', SONARR_API_KEY),
+    error: (err, req, res) => {
+      if (err.code !== 'ECONNREFUSED') {
+        console.error(`[Proxy Error] Sonarr Media on ${req.url}:`, err.message);
+      }
+      if (!res.headersSent) res.status(502).json({ error: 'Proxy Error' });
+    }
   }
 }));
 
@@ -322,7 +340,13 @@ app.use('/radarr-media', requireAuth, createProxyMiddleware({
     return newPath;
   },
   on: {
-    proxyReq: (proxyReq) => proxyReq.setHeader('X-Api-Key', RADARR_API_KEY)
+    proxyReq: (proxyReq) => proxyReq.setHeader('X-Api-Key', RADARR_API_KEY),
+    error: (err, req, res) => {
+      if (err.code !== 'ECONNREFUSED') {
+        console.error(`[Proxy Error] Radarr Media on ${req.url}:`, err.message);
+      }
+      if (!res.headersSent) res.status(502).json({ error: 'Proxy Error' });
+    }
   }
 }));
 

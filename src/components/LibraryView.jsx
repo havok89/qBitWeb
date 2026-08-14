@@ -4,7 +4,7 @@ import { getAllMovies } from '../radarrApi';
 import { getAllSeries } from '../sonarrApi';
 import MediaCard from './MediaCard';
 
-const LibraryView = ({ onSelectMedia, isDownloading }) => {
+const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, radarrAvailable = true }) => {
   const [library, setLibrary] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,10 +14,14 @@ const LibraryView = ({ onSelectMedia, isDownloading }) => {
     const fetchLibrary = async () => {
       setIsLoading(true);
       try {
-        const [movies, series] = await Promise.all([
-          getAllMovies(),
-          getAllSeries()
-        ]);
+        const fetchPromises = [];
+        if (radarrAvailable) fetchPromises.push(getAllMovies());
+        else fetchPromises.push(Promise.resolve([]));
+        
+        if (sonarrAvailable) fetchPromises.push(getAllSeries());
+        else fetchPromises.push(Promise.resolve([]));
+
+        const [movies, series] = await Promise.all(fetchPromises);
         
         const mappedMovies = movies.map(m => ({ ...m, _type: 'radarr' }));
         const mappedSeries = series.map(s => ({ ...s, _type: 'sonarr' }));
@@ -38,7 +42,7 @@ const LibraryView = ({ onSelectMedia, isDownloading }) => {
     };
     
     fetchLibrary();
-  }, []);
+  }, [sonarrAvailable, radarrAvailable]);
 
   const filteredLibrary = library.filter(item => 
     (item.title || '').toLowerCase().includes(searchTerm.toLowerCase())
