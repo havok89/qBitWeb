@@ -9,6 +9,11 @@ const handleResponse = async (res) => {
   }
 };
 
+export const getMovie = async (id) => {
+  const res = await fetch(`/radarr/api/v3/movie/${id}`);
+  return await handleResponse(res);
+};
+
 export const checkRadarrStatus = async () => {
   try {
     const res = await fetch('/radarr/api/v3/system/status');

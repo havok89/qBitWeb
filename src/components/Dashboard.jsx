@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { startRegistration } from '@simplewebauthn/browser';
 import TorrentCard from './TorrentCard';
 import MediaList from './MediaList';
@@ -9,7 +10,7 @@ import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
 import { checkRadarrStatus, deleteMovie } from '../radarrApi';
 import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database } from 'lucide-react';
 import LibraryView from './LibraryView';
-import MediaDetails from './MediaDetails';
+import MediaDetailsRoute from './MediaDetailsRoute';
 
 const Dashboard = ({ authStatus, onLogin, onLogout }) => {
   const [torrents, setTorrents] = useState([]);
@@ -80,27 +81,15 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
     }
   }, [showAddModal]);
 
-  // New states for Media integration
-  const [currentView, setCurrentView] = useState(localStorage.getItem('currentView') || 'torrents'); // 'torrents' | 'upcoming' | 'recent' | 'missing' | 'library'
-  const [selectedMediaItem, setSelectedMediaItem] = useState(() => {
-    const saved = localStorage.getItem('selectedMediaItem');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (selectedMediaItem) {
-      localStorage.setItem('selectedMediaItem', JSON.stringify(selectedMediaItem));
-    } else {
-      localStorage.removeItem('selectedMediaItem');
-    }
-  }, [selectedMediaItem]);
+  const currentView = location.pathname === '/library' ? 'library' 
+    : location.pathname === '/recent' ? 'recent'
+    : location.pathname === '/upcoming' ? 'upcoming'
+    : location.pathname === '/missing' ? 'missing'
+    : location.pathname.startsWith('/media') ? 'media'
+    : 'torrents';
 
   const fetchTorrents = useCallback(async () => {
     if (currentView !== 'torrents' || !authStatus?.authenticated) return;
@@ -135,12 +124,12 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
 
       if (!qAvailable && currentView === 'torrents') {
         if (sAvailable || rAvailable) {
-          setCurrentView('library');
+          navigate('/library');
         }
       }
     };
     checkMediaServers();
-  }, [authStatus?.authenticated, currentView]);
+  }, [authStatus?.authenticated, currentView, navigate]);
 
   useEffect(() => {
     fetchTorrents();
@@ -217,20 +206,7 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
     fetchTorrents();
   };
 
-  const changeView = (view) => {
-    setCurrentView(view);
-    localStorage.setItem('currentView', view);
-    setSelectedMediaItem(null);
-  };
 
-  const handleDeleteMedia = async (id, isRadarr) => {
-    if (isRadarr) {
-      await deleteMovie(id, true);
-    } else {
-      await deleteSeries(id, true);
-    }
-    setSelectedMediaItem(null); // Return to library after deletion
-  };
 
   return (
     <div>
@@ -239,7 +215,7 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
             <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : currentView === 'library' ? 'Library' : 'Missing'}
+              {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : currentView === 'library' ? 'Library' : currentView === 'media' ? 'Media Details' : 'Missing'}
             </span>
           </div>
         </div>
@@ -277,38 +253,48 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
       
       {!authStatus?.authenticated ? (
         <Login authStatus={authStatus} onLogin={onLogin} />
-      ) : selectedMediaItem ? (
-        <MediaDetails 
-          item={selectedMediaItem.item} 
-          isRadarr={selectedMediaItem.isRadarr} 
-          onBack={() => setSelectedMediaItem(null)}
-          onDelete={handleDeleteMedia}
-        />
-      ) : currentView === 'torrents' ? (
-        <>
-            {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
-
-            {torrents.length === 0 && !error ? (
-              <div className="empty-state">
-                <DownloadCloud size={48} opacity={0.5} />
-                <h2>No torrents currently queued</h2>
-                <p>Click the + icon above to add a new torrent.</p>
-              </div>
-            ) : (
-              <div className="torrent-list">
-                {torrents.map(t => (
-                  <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
-                ))}
-              </div>
-            )}
-          </>
-      ) : currentView === 'library' ? (
-        <LibraryView 
-          onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })}
-          isDownloading={false} 
-        />
       ) : (
-        <MediaList mode={currentView} isAuthenticated={authStatus?.authenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => setSelectedMediaItem({ item, isRadarr })} />
+        <Routes>
+          <Route path="/" element={
+            <>
+              {error && <div className="error-msg" style={{ marginBottom: '20px' }}>{error}</div>}
+              {torrents.length === 0 && !error ? (
+                <div className="empty-state">
+                  <DownloadCloud size={48} opacity={0.5} />
+                  <h2>No torrents currently queued</h2>
+                  <p>Click the + icon above to add a new torrent.</p>
+                </div>
+              ) : (
+                <div className="torrent-list">
+                  {torrents.map(t => (
+                    <TorrentCard key={t.hash} torrent={t} onUpdate={fetchTorrents} />
+                  ))}
+                </div>
+              )}
+            </>
+          } />
+          
+          <Route path="/library" element={
+            <LibraryView 
+              onSelectMedia={(item, isRadarr) => navigate(`/media/${isRadarr ? 'movie' : 'series'}/${item.id}`)}
+              isDownloading={false} 
+            />
+          } />
+          
+          <Route path="/recent" element={
+            <MediaList mode="recent" isAuthenticated={authStatus?.authenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => navigate(`/media/${isRadarr ? 'movie' : 'series'}/${item.id}`)} />
+          } />
+          
+          <Route path="/upcoming" element={
+            <MediaList mode="upcoming" isAuthenticated={authStatus?.authenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => navigate(`/media/${isRadarr ? 'movie' : 'series'}/${item.id}`)} />
+          } />
+          
+          <Route path="/missing" element={
+            <MediaList mode="missing" isAuthenticated={authStatus?.authenticated} sonarrAvailable={sonarrAvailable} radarrAvailable={radarrAvailable} onSelectMedia={(item, isRadarr) => navigate(`/media/${isRadarr ? 'movie' : 'series'}/${item.id}`)} />
+          } />
+
+          <Route path="/media/:type/:id" element={<MediaDetailsRoute />} />
+        </Routes>
       )}
 
       {/* Add Torrent Modal */}
@@ -502,46 +488,47 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
       {(sonarrAvailable || radarrAvailable) && (
         <nav className="bottom-nav">
           {qbittorrentAvailable && (
-            <button 
-              className={`bottom-nav-btn ${currentView === 'torrents' ? 'active' : ''}`}
-              onClick={() => changeView('torrents')}
+            <NavLink 
+              to="/"
+              className={({ isActive }) => `bottom-nav-btn ${isActive ? 'active' : ''}`}
+              end
             >
               <Zap size={24} />
               <span>Torrents</span>
-            </button>
+            </NavLink>
           )}
 
-          <button 
-            className={`bottom-nav-btn ${currentView === 'library' ? 'active' : ''}`}
-            onClick={() => changeView('library')}
+          <NavLink 
+            to="/library"
+            className={({ isActive }) => `bottom-nav-btn ${isActive ? 'active' : ''}`}
           >
             <Database size={24} />
             <span>Library</span>
-          </button>
+          </NavLink>
           
-          <button 
-            className={`bottom-nav-btn ${currentView === 'recent' ? 'active' : ''}`}
-            onClick={() => changeView('recent')}
+          <NavLink 
+            to="/recent"
+            className={({ isActive }) => `bottom-nav-btn ${isActive ? 'active' : ''}`}
           >
             <History size={24} />
             <span>Recent</span>
-          </button>
+          </NavLink>
           
-          <button 
-            className={`bottom-nav-btn ${currentView === 'upcoming' ? 'active' : ''}`}
-            onClick={() => changeView('upcoming')}
+          <NavLink 
+            to="/upcoming"
+            className={({ isActive }) => `bottom-nav-btn ${isActive ? 'active' : ''}`}
           >
             <Calendar size={24} />
             <span>Upcoming</span>
-          </button>
+          </NavLink>
           
-          <button 
-            className={`bottom-nav-btn ${currentView === 'missing' ? 'active' : ''}`}
-            onClick={() => changeView('missing')}
+          <NavLink 
+            to="/missing"
+            className={({ isActive }) => `bottom-nav-btn ${isActive ? 'active' : ''}`}
           >
             <Film size={24} />
             <span>Missing</span>
-          </button>
+          </NavLink>
         </nav>
       )}
     </div>

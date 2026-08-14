@@ -9,6 +9,11 @@ const handleResponse = async (res) => {
   }
 };
 
+export const getSeries = async (id) => {
+  const res = await fetch(`/sonarr/api/v3/series/${id}`);
+  return await handleResponse(res);
+};
+
 export const checkSonarrStatus = async () => {
   try {
     const res = await fetch('/sonarr/api/v3/system/status');
