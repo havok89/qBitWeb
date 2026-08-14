@@ -1,8 +1,20 @@
 # qBitWeb
 
-A beautiful, modern, and lightweight custom Web UI for qBittorrent, built with React and Vite.
+A unified Web UI for your media stack, built with React and Vite.
 
-qBitWeb replaces the default qBittorrent web interface with a sleek, responsive, and high-performance React application. It features a modern row-based layout, premium dark mode aesthetics with glassmorphism, seamless Sonarr integration, and advanced torrent file management.
+qBitWeb serves as a frontend for **qBittorrent**, **Sonarr**, and **Radarr**. It features a row-based layout, dark mode UI, media integration, and advanced torrent file management.
+
+**All services are optional.** Mix and match Radarr, Sonarr, and qBittorrent to create the exact dashboard you need, or use all three for a unified home media experience.
+
+## Features
+
+- **Modular Services**: Configure only what you need. If you only use qBittorrent, it acts as a full-screen torrent client. If you add Sonarr or Radarr, it transforms into a media dashboard.
+- **Dark Mode UI**: Interactive elements, smooth transitions, and responsive design for mobile and desktop.
+- **Media Integrations**: View Upcoming releases, Missing media, and Recently Added history natively within the UI from Sonarr and Radarr.
+- **Interactive Search & Discovery**: Browse and search for new Movies or TV Shows right from the dashboard, configure root folders and quality profiles, and add them directly to your servers.
+- **Detailed Media Views**: Click into any movie or show to view a backdrop, synopsis, download status, and trigger direct search and delete commands.
+- **Torrent File Manager**: Open any torrent to view a hierarchical folder tree of its contents. Search, filter, and selectively toggle files or entire directories.
+- **Secure Authentication**: Built-in password protection and WebAuthn Passkey support.
 
 ## Screenshots
 
@@ -12,20 +24,26 @@ qBitWeb replaces the default qBittorrent web interface with a sleek, responsive,
   ### Torrent List
   <img src="./screenshots/torrent-list.png" width="340" alt="Torrent List">
 
-  ### Torrent List (No Sonarr)
-  <img src="./screenshots/torrent-list-no-sonarr.png" width="340" alt="Torrent List (No Sonarr)">
+  ### Missing Media with Filters
+  <img src="./screenshots/missing-filters.png" width="340" alt="Missing with Filters">
+
+  ### Discover and Add Media
+  <img src="./screenshots/add-media-search.png" width="340" alt="Search for Media">
+
+  ### Add Media Setup
+  <img src="./screenshots/add-media.png" width="340" alt="Configure New Media">
+
+  ### Media Details & Actions
+  <img src="./screenshots/media-details.png" width="340" alt="Media Details">
+
+  ### Recently Added
+  <img src="./screenshots/recently-added.png" width="340" alt="Recently Added">
+
+  ### Upcoming Releases
+  <img src="./screenshots/upcoming.png" width="340" alt="Upcoming">
 
   ### Bottom Navigation
   <img src="./screenshots/navigation.png" width="340" alt="Bottom Navigation">
-
-  ### Recently Added (Sonarr)
-  <img src="./screenshots/recently-added.png" width="340" alt="Recently Added">
-
-  ### Upcoming (Sonarr)
-  <img src="./screenshots/upcoming.png" width="340" alt="Upcoming">
-
-  ### Missing (Sonarr)
-  <img src="./screenshots/missing.png" width="340" alt="Missing">
 
   ### Add Torrent Popup
   <img src="./screenshots/add-torrent.png" width="340" alt="Add Torrent">
@@ -35,57 +53,32 @@ qBitWeb replaces the default qBittorrent web interface with a sleek, responsive,
 
 </details>
 
-## Features
-
-- **Modern Aesthetics**: A beautifully crafted dark mode UI inspired by modern web apps.
-- **Sonarr Integration**: Connect directly to your Sonarr instance to view Upcoming episodes, Missing episodes, and Recently Added history natively within the UI! Includes an **Interactive Search** modal to scrape indexers and manually pick the exact release you want to download. You can also instantly **Unmonitor** unwanted missing episodes directly from the interface.
-- **Advanced File Manager**: Open any torrent to view a hierarchical folder tree of its contents. Search, filter, and selectively toggle files or entire directories to download exactly what you want.
-- **Flexible Adding**: Add torrents via Magnet URLs or upload multiple `.torrent` files at once. Optionally assign qBittorrent categories on upload.
-- **Global Actions**: Easily stop or start all torrents at once.
-- **Responsive Layout**: Works flawlessly on both desktop and mobile devices.
-- **Optimistic UI**: Buttons provide instant visual feedback (loading spinners and state changes) for a snappy experience.
-
 ## Getting Started
 
 You have a few ways to run qBitWeb depending on your setup. 
 
-### Method 1: As an "Alternative Web UI" (Recommended for simplicity)
-
-This is the fastest method to install it directly into your existing qBittorrent application.
-
-1. Ensure you have Node.js installed.
-2. Clone this repository and navigate into it:
-   ```bash
-   git clone https://github.com/yourusername/qBitWeb.git
-   cd qBitWeb
-   ```
-3. Install dependencies and build the static files:
-   ```bash
-   npm install
-   npm run build
-   ```
-4. Open your current qBittorrent Web UI and navigate to **Settings -> Web UI**.
-5. Check the box for **"Use alternative Web UI"**.
-6. Set the path to the absolute path of the `dist` folder that was just created (e.g., `/home/user/qBitWeb/dist`).
-7. Refresh your browser!
-
-### Method 2: Standalone Docker Container
+### Method 1: Standalone Docker Container (Recommended)
 
 Perfect for advanced setups or reverse proxies where you want the UI running in its own isolated container. The Docker image is automatically built and published to the GitHub Container Registry (`ghcr.io`).
 
-1. Run the container and pass in your qBittorrent API URL:
-   ```bash
-   docker run -d \
-     --name qbitweb \
-     --restart unless-stopped \
-     -p 3000:80 \
-     -e QBITTORRENT_URL=http://192.168.1.100:8080 \
-     # Optional: Remove these two lines if you don't use Sonarr \
-     -e SONARR_URL=http://192.168.1.101:8989 \
-     -e SONARR_API_KEY=your_sonarr_api_key_here \
-     ghcr.io/havok89/qbitweb:latest
-   ```
-2. Access the UI at `http://localhost:3000`.
+Run the container and pass in your URLs. **All of these environment variables are completely optional.**
+
+```bash
+docker run -d \
+  --name qbitweb \
+  --restart unless-stopped \
+  -p 3000:80 \
+  -e AUTH_PASSWORD=optional_secure_password \
+  -e QBITTORRENT_URL=http://192.168.1.100:8080 \
+  -e QBITTORRENT_USERNAME=admin \
+  -e QBITTORRENT_PASSWORD=adminadmin \
+  -e SONARR_URL=http://192.168.1.101:8989 \
+  -e SONARR_API_KEY=your_sonarr_api_key_here \
+  -e RADARR_URL=http://192.168.1.102:7878 \
+  -e RADARR_API_KEY=your_radarr_api_key_here \
+  ghcr.io/havok89/qbitweb:latest
+```
+Access the UI at `http://localhost:3000`.
 
 **Updating your Docker container:**
 When a new release is out, simply pull the latest image and recreate your container:
@@ -93,8 +86,32 @@ When a new release is out, simply pull the latest image and recreate your contai
 docker pull ghcr.io/havok89/qbitweb:latest
 docker stop qbitweb
 docker rm qbitweb
-# Run the long docker run command from step 1 again!
+# Run the docker run command again!
 ```
+
+### Method 2: Node.js Backend
+
+You can run the built-in Node server directly.
+
+1. Ensure you have Node.js installed.
+2. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/qBitWeb.git
+   cd qBitWeb
+   ```
+3. Install dependencies and build the frontend:
+   ```bash
+   npm install
+   npm run build
+   ```
+4. Copy `.env.example` to `.env` and fill out your desired optional connections:
+   ```bash
+   cp .env.example .env
+   ```
+5. Start the server:
+   ```bash
+   npm start
+   ```
 
 ### Method 3: Local Development
 
@@ -104,38 +121,20 @@ If you want to modify the code or run it locally for testing:
    ```bash
    npm install
    ```
-2. Create a `.env` file with your qBittorrent URL:
-   ```env
-   VITE_QBIT_URL=http://192.168.1.100:8080
-   ```
-3. Start the Vite development server:
+2. Create a `.env` file with your optional server configurations (see `.env.example`).
+3. Start the dev backend and the Vite frontend:
    ```bash
+   npm run dev:server
    npm run dev
    ```
 4. Open `http://localhost:5173` in your browser.
-
-## Optional Sonarr Integration
-
-qBitWeb can seamlessly connect to your Sonarr instance to display upcoming episodes, missing episodes, and your recent download history natively within the UI. 
-
-**Note: Sonarr integration is completely optional. The bottom navigation menu will only appear if you configure a Sonarr connection. If left unconfigured, qBitWeb operates purely as a clean, full-screen qBittorrent client.**
-
-To enable this feature, simply add your Sonarr URL and API Key to your `.env` file (if using Docker or Local Development):
-
-```env
-# Sonarr configuration
-SONARR_URL=http://192.168.1.101:8989
-SONARR_API_KEY=your_sonarr_api_key_here
-```
-
-*(Note: For Local Development with Vite, you can optionally prefix these with `VITE_` if needed, but the dev server is configured to automatically pick up `SONARR_URL` and `SONARR_API_KEY` for its proxy as well).*
 
 ## Tech Stack
 
 - **React** (UI Framework)
 - **Vite** (Build Tool)
+- **React Router** (Navigation)
 - **Lucide React** (Icons)
-- **Date-fns** (Date formatting)
 - **Vanilla CSS** (Styling)
 
 ## License
