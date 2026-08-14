@@ -255,7 +255,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
                   {statusBadge === 'Missing' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
-                  {statusBadge === 'Downloading' && <DownloadCloud size={14} style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                 </>
               )}

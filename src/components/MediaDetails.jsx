@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
-import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles } from '../sonarrApi';
+import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
 import LazyImage from './LazyImage';
@@ -34,6 +34,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const toggleSeasonCollapse = (seasonNum) => {
     setCollapsedSeasons(prev => ({ ...prev, [seasonNum]: !prev[seasonNum] }));
   };
+
+  // Episode queue status map: episodeId -> 'downloading' | 'importing'
+  const [episodeQueueMap, setEpisodeQueueMap] = useState(new Map());
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -87,8 +90,20 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     if (!isRadarr) {
       const fetchEpisodes = async () => {
         try {
-          const data = await getEpisodes(item.id);
+          const [data, queueData] = await Promise.all([
+            getEpisodes(item.id),
+            getQueue().catch(() => [])
+          ]);
           setEpisodes(data || []);
+
+          // Build episode queue map
+          const qMap = new Map();
+          (queueData || []).forEach(q => {
+            const status = q.status === 'completed' ? 'importing' : 'downloading';
+            const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
+            qMap.set(q.episodeId, { status, pct });
+          });
+          setEpisodeQueueMap(qMap);
           
           if (data && data.length > 0) {
             const seasonNums = [...new Set(data.map(ep => ep.seasonNumber))].sort((a, b) => b - a);
@@ -353,6 +368,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                 return !ep.hasFile && isUnaired;
               }).length;
 
+              const downloadingEps = seasonEps.filter(ep => episodeQueueMap.get(ep.id)?.status === 'downloading').length;
+              const importingEps = seasonEps.filter(ep => episodeQueueMap.get(ep.id)?.status === 'importing').length;
+              const anyActive = downloadingEps > 0 || importingEps > 0;
+
               let seasonStatusText = '';
               let seasonStatusColor = 'var(--text-secondary)';
               if (missingEps > 0) {
@@ -381,7 +400,8 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         {seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}
                       </span>
                       {seasonStatusText && (
-                        <span style={{ fontSize: '12px', fontWeight: '500', color: seasonStatusColor, marginTop: '2px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: seasonStatusColor, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {anyActive && <Loader2 size={12} className="spinner" color={importingEps > 0 ? '#BF5AF2' : 'var(--accent-blue)'} />}
                           {seasonStatusText}
                         </span>
                       )}
@@ -434,6 +454,12 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         } else if (isUnaired) {
                           statusBadge = 'Unaired';
                           statusColor = 'var(--text-secondary)';
+                        } else if (episodeQueueMap.get(ep.id)?.status === 'importing') {
+                          statusBadge = 'Importing';
+                          statusColor = '#BF5AF2';
+                        } else if (episodeQueueMap.get(ep.id)?.status === 'downloading') {
+                          statusBadge = 'Downloading';
+                          statusColor = 'var(--accent-blue)';
                         }
                         
                         const isLast = idx === arr.length - 1;
@@ -456,7 +482,12 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 {statusBadge === 'Missing' && <AlertCircle size={14} />}
                                 {statusBadge === 'Downloaded' && <CheckCircle2 size={14} />}
                                 {statusBadge === 'Unaired' && <Clock size={14} />}
+                                {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" />}
+                                {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" />}
                                 {statusBadge}
+                                {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct > 0 && (
+                                  <span style={{ opacity: 0.7, fontWeight: '400' }}>{episodeQueueMap.get(ep.id).pct}%</span>
+                                )}
                               </div>
                             </div>
                             
