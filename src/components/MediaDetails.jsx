@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Edit2, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
+import { useCommand } from '../CommandContext';
 import InteractiveSearchModal from './InteractiveSearchModal';
 import HistoryModal from './HistoryModal';
 import LazyImage from './LazyImage';
@@ -23,12 +24,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [selectedSeasonFolder, setSelectedSeasonFolder] = useState(initialItem.seasonFolder !== undefined ? initialItem.seasonFolder : true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // Search state per episode
-  const [searchingIds, setSearchingIds] = useState({});
-  const [searchSuccessIds, setSearchSuccessIds] = useState({});
-  
-  const [seasonSearchingIds, setSeasonSearchingIds] = useState({});
-  const [seasonSearchSuccessIds, setSeasonSearchSuccessIds] = useState({});
+  const { searchStatuses, trackCommand } = useCommand();
   
   // Interactive search state per episode
   const [interactiveModalData, setInteractiveModalData] = useState(null); // { item, isRadarr, title }
@@ -160,68 +156,53 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     }
   };
 
+  useEffect(() => {
+    // Poll the queue every 5 seconds so we get live updates
+    const interval = setInterval(() => {
+      fetchQueue();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isRadarr]);
+
   const handleEpisodeSearch = async (episodeId) => {
-    if (searchingIds[episodeId] || searchSuccessIds[episodeId]) return;
+    const trackingKey = `sonarr-episode-${episodeId}`;
+    if (searchStatuses[trackingKey]?.isSearching || searchStatuses[trackingKey]?.isSuccess) return;
     
-    setSearchingIds(prev => ({ ...prev, [episodeId]: true }));
-    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
-      const success = await searchEpisode(episodeId);
-      if (success) {
-        setSearchSuccessIds(prev => ({ ...prev, [episodeId]: true }));
-        setTimeout(async () => {
-          await fetchQueue();
-          setSearchSuccessIds(prev => ({ ...prev, [episodeId]: false }));
-        }, 10000);
+      const commandId = await searchEpisode(episodeId);
+      if (commandId) {
+        trackCommand(trackingKey, commandId, false);
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      await minWait;
-      setSearchingIds(prev => ({ ...prev, [episodeId]: false }));
     }
   };
 
   const handleMovieSearch = async () => {
-    if (searchingIds[item.id] || searchSuccessIds[item.id]) return;
+    const trackingKey = `radarr-movie-${item.id}`;
+    if (searchStatuses[trackingKey]?.isSearching || searchStatuses[trackingKey]?.isSuccess) return;
     
-    setSearchingIds(prev => ({ ...prev, [item.id]: true }));
-    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
-      const success = await searchMovie(item.id);
-      if (success) {
-        setSearchSuccessIds(prev => ({ ...prev, [item.id]: true }));
-        setTimeout(async () => {
-          await fetchQueue();
-          setSearchSuccessIds(prev => ({ ...prev, [item.id]: false }));
-        }, 10000);
+      const commandId = await searchMovie(item.id);
+      if (commandId) {
+        trackCommand(trackingKey, commandId, true);
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      await minWait;
-      setSearchingIds(prev => ({ ...prev, [item.id]: false }));
     }
   };
 
   const handleSeasonSearch = async (seasonNum) => {
-    if (seasonSearchingIds[seasonNum] || seasonSearchSuccessIds[seasonNum]) return;
+    const trackingKey = `sonarr-season-${item.id}-${seasonNum}`;
+    if (searchStatuses[trackingKey]?.isSearching || searchStatuses[trackingKey]?.isSuccess) return;
     
-    setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: true }));
-    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
-      const success = await searchSeason(item.id, seasonNum);
-      if (success) {
-        setSeasonSearchSuccessIds(prev => ({ ...prev, [seasonNum]: true }));
-        setTimeout(() => {
-          setSeasonSearchSuccessIds(prev => ({ ...prev, [seasonNum]: false }));
-        }, 5000);
+      const commandId = await searchSeason(item.id, seasonNum);
+      if (commandId) {
+        trackCommand(trackingKey, commandId, false);
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      await minWait;
-      setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: false }));
     }
   };
 
@@ -417,16 +398,23 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
               >
                 <Clock size={16} /> <span className="btn-text">History</span>
               </button>
-              <button 
-                className={`btn ${searchSuccessIds[item.id] ? 'btn-primary' : 'btn-secondary'} media-action-btn`} 
-                onClick={handleMovieSearch}
-                disabled={searchingIds[item.id]}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: searchSuccessIds[item.id] ? '#34C759' : undefined }}
-                title="Auto Search"
-              >
-                {searchingIds[item.id] ? <Loader2 size={16} className="spinner" /> : <Search size={16} />} 
-                <span className="btn-text">{searchSuccessIds[item.id] ? 'Searched!' : 'Auto Search'}</span>
-              </button>
+              {(() => {
+                const movieTrackingKey = `radarr-movie-${item.id}`;
+                const movieIsSearching = searchStatuses[movieTrackingKey]?.isSearching;
+                const movieIsSuccess = searchStatuses[movieTrackingKey]?.isSuccess;
+                return (
+                  <button 
+                    className={`btn ${movieIsSuccess ? 'btn-primary' : 'btn-secondary'} media-action-btn`} 
+                    onClick={handleMovieSearch}
+                    disabled={movieIsSearching}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: movieIsSuccess ? '#34C759' : undefined }}
+                    title="Auto Search"
+                  >
+                    {movieIsSearching ? <Loader2 size={16} className="spinner" /> : <Search size={16} />} 
+                    <span className="btn-text">{movieIsSuccess ? 'Searched!' : 'Auto Search'}</span>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -472,6 +460,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                 seasonStatusText = 'Unaired';
               }
               
+              const seasonTrackingKey = `sonarr-season-${item.id}-${seasonNum}`;
+              const seasonIsSearching = searchStatuses[seasonTrackingKey]?.isSearching;
+              const seasonIsSuccess = searchStatuses[seasonTrackingKey]?.isSuccess;
+              
               return (
               <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0, background: 'rgba(20,20,20,0.85)' }}>
                 <div 
@@ -510,13 +502,13 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                       <List size={18} />
                     </button>
                     <button 
-                      className={`icon-btn ${seasonSearchSuccessIds[seasonNum] ? 'primary' : ''}`} 
+                      className={`icon-btn ${seasonIsSuccess ? 'primary' : ''}`} 
                       onClick={(e) => { e.stopPropagation(); handleSeasonSearch(seasonNum); }} 
                       title="Auto Season Search"
-                      disabled={seasonSearchingIds[seasonNum]}
+                      disabled={seasonIsSearching}
                       style={{ background: 'transparent' }}
                     >
-                      {seasonSearchingIds[seasonNum] ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={seasonSearchSuccessIds[seasonNum] ? 'currentColor' : 'none'} />}
+                      {seasonIsSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={seasonIsSuccess ? 'currentColor' : 'none'} />}
                     </button>
                     <button 
                       className="icon-btn" 
@@ -539,10 +531,15 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         const now = new Date();
                         const isUnaired = ep.airDateUtc ? new Date(ep.airDateUtc) > now : false;
                         
+                        const epTrackingKey = `sonarr-episode-${ep.id}`;
+                        const epIsSearching = searchStatuses[epTrackingKey]?.isSearching;
+                        const epIsSuccess = searchStatuses[epTrackingKey]?.isSuccess;
+                        
                         let statusBadge = 'Missing';
                         let statusColor = 'var(--danger)';
+                        let spinnerColor = 'var(--accent-blue)';
                         
-                        if (searchingIds[ep.id] || searchSuccessIds[ep.id]) {
+                        if (epIsSearching || epIsSuccess) {
                           statusBadge = 'Searching...';
                           statusColor = 'var(--accent-blue)';
                         } else if (ep.hasFile) {
@@ -581,6 +578,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         } else if (episodeQueueMap.get(ep.id)?.status === 'downloading') {
                           statusBadge = 'Downloading';
                           statusColor = 'var(--accent-blue)';
+                          spinnerColor = 'var(--accent-blue)';
                         }
                         
                         const isLast = idx === arr.length - 1;
@@ -590,8 +588,8 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                             <div style={{ width: '32px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '15px' }}>
                               {ep.episodeNumber}
                             </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: '500', fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                              <div style={{ fontWeight: '500', fontSize: '15px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {ep.title}
                               </div>
                               {ep.airDateUtc && (
@@ -599,51 +597,35 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                   {new Date(ep.airDateUtc).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                 </div>
                               )}
-                              <div style={{ fontSize: '10px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', marginTop: ep.airDateUtc ? '0' : '4px' }}>
-                                {statusBadge === 'Missing' && <AlertCircle size={14} />}
-                                {(ep.hasFile || statusBadge === 'Downloaded') && <CheckCircle2 size={14} />}
-                                {statusBadge === 'Unaired' && <Clock size={14} />}
-                                {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" />}
-                                {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" />}
-                                {statusBadge === 'Searching...' && <Loader2 size={14} className="spinner" />}
-                                {statusBadge}
-                                {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct > 0 && (
-                                  <span style={{ opacity: 0.7, fontWeight: '400' }}>{episodeQueueMap.get(ep.id).pct}%</span>
-                                )}
-                              </div>
+                              {statusBadge && (
+                                <div style={{ fontSize: '10px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', marginTop: ep.airDateUtc ? '0' : '4px' }}>
+                                  {statusBadge === 'Missing' && <AlertCircle size={14} />}
+                                  {(ep.hasFile || statusBadge === 'Downloaded') && <CheckCircle2 size={14} />}
+                                  {statusBadge === 'Unaired' && <Clock size={14} />}
+                                  {(statusBadge === 'Downloading' || statusBadge === 'Importing' || statusBadge === 'Searching...') && <Loader2 size={14} className="spinner" />}
+                                  {statusBadge}
+                                  {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct > 0 && (
+                                    <span style={{ opacity: 0.7, fontWeight: '400' }}>{episodeQueueMap.get(ep.id).pct}%</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <button 
                                 className="icon-btn" 
-                                title="Interactive Search"
-                                disabled={isUnaired}
-                                onClick={() => setInteractiveModalData({ item: ep, isRadarr: false, title: `S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` })}
-                                style={{ opacity: isUnaired ? 0.3 : 1 }}
-                              >
-                                <List size={16} />
-                              </button>
-                              <button 
-                                className="icon-btn" 
-                                title="View History"
-                                onClick={() => setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` })}
+                                onClick={() => setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` })} 
+                                title="Episode History"
                               >
                                 <Clock size={16} />
                               </button>
                               <button 
-                                className="icon-btn" 
+                                className={`icon-btn ${epIsSuccess ? 'primary' : ''}`} 
+                                onClick={() => handleEpisodeSearch(ep.id)} 
                                 title="Auto Search"
-                                disabled={isUnaired || searchingIds[ep.id] || searchSuccessIds[ep.id]}
-                                onClick={() => handleEpisodeSearch(ep.id)}
+                                disabled={isUnaired || epIsSearching}
                                 style={{ opacity: isUnaired ? 0.3 : 1 }}
                               >
-                                {searchingIds[ep.id] ? (
-                                  <Loader2 size={16} className="spinner" />
-                                ) : searchSuccessIds[ep.id] ? (
-                                  <CheckCircle2 size={16} color="#34C759" />
-                                ) : (
-                                  <Search size={16} />
-                                )}
+                                {epIsSearching ? <Loader2 size={16} className="spinner" /> : <Search size={16} fill={epIsSuccess ? 'currentColor' : 'none'} />}
                               </button>
                             </div>
                           </div>

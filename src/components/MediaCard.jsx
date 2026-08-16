@@ -3,15 +3,19 @@ import { createPortal } from 'react-dom';
 import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff, ChevronRight } from 'lucide-react';
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
+import { useCommand } from '../CommandContext';
 import InteractiveSearchModal from './InteractiveSearchModal';
 import HistoryModal from './HistoryModal';
 import LazyImage from './LazyImage';
 
 const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
+  const { searchStatuses, trackCommand } = useCommand();
+  const trackingKey = isRadarr ? `radarr-movie-${item.id}` : (item.series ? `sonarr-episode-${item.id}` : `sonarr-series-${item.id}`);
+  const commandState = searchStatuses[trackingKey] || {};
+  const isSearching = commandState.isSearching || false;
+  const searchSuccess = commandState.isSuccess || false;
   
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchSuccess, setSearchSuccess] = useState(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
   
   // Interactive Search State
@@ -35,6 +39,25 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
 
   const isSonarrEpisode = !isRadarr && item.series;
   const isSonarrSeries = !isRadarr && !item.series;
+
+  useEffect(() => {
+    if (searchSuccess) {
+      const checkQueue = async () => {
+        try {
+          const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
+          const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
+          if (matchedQ) {
+            setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsPendingDownload(false);
+        }
+      };
+      checkQueue();
+    }
+  }, [searchSuccess, isRadarr, item.id]);
 
   const mainTitle = isRadarr ? item.title : (isSonarrEpisode ? item.series.title : item.title || 'Unknown Series');
   
@@ -166,35 +189,20 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
 
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
-    setIsSearching(true);
-    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // We instantly show pending download logic to optimistic UI
+    setIsPendingDownload(true);
+
     try {
-      const success = isRadarr ? await searchMovie(item.id) : await searchEpisode(item.id);
-      if (success) {
-        setSearchSuccess(true);
-        setIsPendingDownload(true);
-        setTimeout(() => setSearchSuccess(false), 5000);
-        
-        // Wait 10 seconds, then check the queue
-        setTimeout(async () => {
-          try {
-            const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
-            const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
-            if (matchedQ) {
-              setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsPendingDownload(false);
-          }
-        }, 10000);
+      const commandId = isRadarr ? await searchMovie(item.id) : await searchEpisode(item.id);
+      if (commandId) {
+        trackCommand(trackingKey, commandId, isRadarr);
+      } else {
+        setIsPendingDownload(false);
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      await minWait;
-      setIsSearching(false);
+      setIsPendingDownload(false);
     }
   };
 

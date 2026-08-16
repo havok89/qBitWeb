@@ -85,7 +85,20 @@ export const searchMovie = async (movieId) => {
       movieIds: [movieId],
     }),
   });
-  return res.ok;
+  if (res.ok) {
+    const data = await handleResponse(res);
+    return data.id || null;
+  }
+  return null;
+};
+
+export const getRadarrCommandStatus = async (commandId) => {
+  const res = await fetch(`/radarr/api/v3/command/${commandId}`);
+  if (res.ok) {
+    const data = await handleResponse(res);
+    return data.status; // e.g. 'queued', 'started', 'completed', 'failed'
+  }
+  return 'failed';
 };
 
 export const getMovieReleases = async (movieId) => {

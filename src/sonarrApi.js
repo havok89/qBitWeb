@@ -81,7 +81,11 @@ export const searchEpisode = async (episodeId) => {
       episodeIds: [episodeId],
     }),
   });
-  return res.ok;
+  if (res.ok) {
+    const data = await handleResponse(res);
+    return data.id || null;
+  }
+  return null;
 };
 
 export const searchSeason = async (seriesId, seasonNumber) => {
@@ -94,7 +98,20 @@ export const searchSeason = async (seriesId, seasonNumber) => {
       seasonNumber: seasonNumber
     }),
   });
-  return res.ok;
+  if (res.ok) {
+    const data = await handleResponse(res);
+    return data.id || null;
+  }
+  return null;
+};
+
+export const getSonarrCommandStatus = async (commandId) => {
+  const res = await fetch(`/sonarr/api/v3/command/${commandId}`);
+  if (res.ok) {
+    const data = await handleResponse(res);
+    return data.status; // 'queued', 'started', 'completed', 'failed'
+  }
+  return 'failed';
 };
 
 export const getReleases = async (episodeId) => {
