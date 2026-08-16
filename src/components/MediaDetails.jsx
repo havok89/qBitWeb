@@ -106,10 +106,13 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
 
           // Build episode queue map
           const qMap = new Map();
+          const epIds = new Set((data || []).map(e => e.id));
           (queueData || []).forEach(q => {
-            const status = q.status === 'completed' ? 'importing' : 'downloading';
-            const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
-            qMap.set(q.episodeId, { status, pct });
+            if (epIds.has(q.episodeId) || q.seriesId === item.id) {
+              const status = q.status === 'completed' ? 'importing' : 'downloading';
+              const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
+              qMap.set(q.episodeId, { status, pct });
+            }
           });
           setEpisodeQueueMap(qMap);
           
@@ -144,10 +147,16 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       try {
         const queueData = await getQueue().catch(() => []);
         const qMap = new Map();
+        
+        // Only track queue items that belong to the current episodes loaded on this page
+        const currentEpisodeIds = new Set(episodes.map(e => e.id));
+        
         (queueData || []).forEach(q => {
-          const status = q.status === 'completed' ? 'importing' : 'downloading';
-          const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
-          qMap.set(q.episodeId, { status, pct });
+          if (currentEpisodeIds.has(q.episodeId) || q.seriesId === item.id) {
+            const status = q.status === 'completed' ? 'importing' : 'downloading';
+            const pct = q.size > 0 ? Math.round(((q.size - q.sizeleft) / q.size) * 100) : 0;
+            qMap.set(q.episodeId, { status, pct });
+          }
         });
         setEpisodeQueueMap(qMap);
       } catch (err) {
@@ -157,12 +166,25 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   };
 
   useEffect(() => {
-    // Poll the queue every 5 seconds so we get live updates
+    if (isRadarr) return;
+
+    // Check if any relevant search just succeeded (stays true for 5 seconds in context)
+    const hasRecentSuccess = Object.keys(searchStatuses).some(k => k.includes(`sonarr-`) && searchStatuses[k]?.isSuccess);
+    const hasActiveDownloads = episodeQueueMap.size > 0;
+
+    // Immediately fetch if a search just succeeded
+    if (hasRecentSuccess) {
+      fetchQueue();
+    }
+
+    // Only set up the 5s polling interval if there are active downloads, or if we're in the 5s success window
+    if (!hasActiveDownloads && !hasRecentSuccess) return;
+
     const interval = setInterval(() => {
       fetchQueue();
     }, 5000);
     return () => clearInterval(interval);
-  }, [isRadarr]);
+  }, [isRadarr, episodeQueueMap.size, searchStatuses]);
 
   const handleEpisodeSearch = async (episodeId) => {
     const trackingKey = `sonarr-episode-${episodeId}`;
@@ -604,8 +626,8 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                   {statusBadge === 'Unaired' && <Clock size={14} />}
                                   {(statusBadge === 'Downloading' || statusBadge === 'Importing' || statusBadge === 'Searching...') && <Loader2 size={14} className="spinner" />}
                                   {statusBadge}
-                                  {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct > 0 && (
-                                    <span style={{ opacity: 0.7, fontWeight: '400' }}>{episodeQueueMap.get(ep.id).pct}%</span>
+                                  {statusBadge === 'Downloading' && episodeQueueMap.get(ep.id)?.pct !== undefined && (
+                                    <span style={{ opacity: 0.7, fontWeight: '400' }}>({episodeQueueMap.get(ep.id).pct}%)</span>
                                   )}
                                 </div>
                               )}
