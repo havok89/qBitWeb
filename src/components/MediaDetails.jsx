@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Edit2, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
-import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
+import { searchMovie, updateMovie, getMovieQualityProfiles, getMovieQueue } from '../radarrApi';
 import { useCommand } from '../CommandContext';
 import InteractiveSearchModal from './InteractiveSearchModal';
 import HistoryModal from './HistoryModal';
@@ -133,6 +133,24 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
         }
       };
       fetchEpisodes();
+    } else {
+      // For Radarr, just fetch the queue
+      const fetchMovieQueue = async () => {
+        try {
+          const queueData = await getMovieQueue().catch(() => []);
+          const qMap = new Map();
+          const matchedQ = queueData.find(q => q.movieId === item.id);
+          if (matchedQ) {
+            const status = matchedQ.status === 'completed' ? 'importing' : 'downloading';
+            const pct = matchedQ.size > 0 ? Math.round(((matchedQ.size - matchedQ.sizeleft) / matchedQ.size) * 100) : 0;
+            qMap.set(item.id, { status, pct });
+          }
+          setEpisodeQueueMap(qMap);
+        } catch (e) {
+          console.error("Failed to load movie queue", e);
+        }
+      };
+      fetchMovieQueue();
     }
   }, [item.id, isRadarr]);
 
@@ -143,8 +161,18 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   };
 
   const fetchQueue = async () => {
-    if (!isRadarr) {
-      try {
+    try {
+      if (isRadarr) {
+        const queueData = await getMovieQueue().catch(() => []);
+        const qMap = new Map();
+        const matchedQ = queueData.find(q => q.movieId === item.id);
+        if (matchedQ) {
+          const status = matchedQ.status === 'completed' ? 'importing' : 'downloading';
+          const pct = matchedQ.size > 0 ? Math.round(((matchedQ.size - matchedQ.sizeleft) / matchedQ.size) * 100) : 0;
+          qMap.set(item.id, { status, pct });
+        }
+        setEpisodeQueueMap(qMap);
+      } else {
         const queueData = await getQueue().catch(() => []);
         const qMap = new Map();
         
@@ -159,17 +187,19 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
           }
         });
         setEpisodeQueueMap(qMap);
-      } catch (err) {
-        console.error("Failed to fetch queue", err);
       }
+    } catch (err) {
+      console.error("Failed to fetch queue", err);
     }
   };
 
   useEffect(() => {
-    if (isRadarr) return;
-
     // Check if any relevant search just succeeded (stays true for 5 seconds in context)
-    const hasRecentSuccess = Object.keys(searchStatuses).some(k => k.includes(`sonarr-`) && searchStatuses[k]?.isSuccess);
+    const hasRecentSuccess = Object.keys(searchStatuses).some(k => {
+      if (isRadarr) return k.includes(`radarr-movie-${item.id}`) && searchStatuses[k]?.isSuccess;
+      return k.includes(`sonarr-`) && searchStatuses[k]?.isSuccess;
+    });
+    
     const hasActiveDownloads = episodeQueueMap.size > 0;
 
     // Immediately fetch if a search just succeeded
@@ -184,7 +214,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       fetchQueue();
     }, 5000);
     return () => clearInterval(interval);
-  }, [isRadarr, episodeQueueMap.size, searchStatuses]);
+  }, [isRadarr, item.id, episodeQueueMap.size, searchStatuses]);
 
   const handleEpisodeSearch = async (episodeId) => {
     const trackingKey = `sonarr-episode-${episodeId}`;
@@ -366,65 +396,92 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
 
       {/* Content Section */}
       {isRadarr ? (
-        <div className="modern-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px', background: 'rgba(20,20,20,0.85)' }}>
-          <h3 style={{ margin: 0, textAlign: 'left' }}>Movie Management</h3>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 auto', color: 'var(--text-secondary)', textAlign: 'left' }}>
-              Status: <strong style={{ color: item.hasFile ? '#34C759' : 'var(--danger)' }}>
-                {(() => {
-                  if (!item.hasFile) return 'Missing';
-                  let qualityStr = '';
-                  let sizeStr = '';
-                  const file = item.movieFile || item.episodeFile;
-                  const qualityObj = item.quality || (file && file.quality);
-                  
-                  if (qualityObj) {
-                    if (qualityObj.quality && qualityObj.quality.name) {
-                      qualityStr = qualityObj.quality.name;
-                    } else if (qualityObj.name) {
-                      qualityStr = qualityObj.name;
-                    } else if (typeof qualityObj === 'string') {
-                      qualityStr = qualityObj;
-                    }
-                  }
-                  
-                  if (file && file.size) {
-                    const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(1);
-                    sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(file.size / (1024 * 1024))} MB`;
-                  } else if (item.sizeOnDisk > 0) {
-                    const sizeGB = (item.sizeOnDisk / (1024 * 1024 * 1024)).toFixed(1);
-                    sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(item.sizeOnDisk / (1024 * 1024))} MB`;
-                  }
-                  
-                  if (qualityStr && sizeStr) return `${qualityStr} (${sizeStr})`;
-                  if (qualityStr) return qualityStr;
-                  if (sizeStr) return sizeStr;
-                  return 'Downloaded';
-                })()}
-              </strong>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-              <button 
-                className="btn btn-secondary media-action-btn" 
-                onClick={() => setInteractiveModalData({ item, isRadarr: true, title: item.title })}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                title="Interactive Search"
-              >
-                <List size={16} /> <span className="btn-text">Interactive Search</span>
-              </button>
-              <button 
-                className="btn btn-secondary media-action-btn" 
-                onClick={() => setHistoryModalData({ itemId: item.id, isRadarr: true, title: item.title })}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                title="View History"
-              >
-                <Clock size={16} /> <span className="btn-text">History</span>
-              </button>
-              {(() => {
-                const movieTrackingKey = `radarr-movie-${item.id}`;
-                const movieIsSearching = searchStatuses[movieTrackingKey]?.isSearching;
-                const movieIsSuccess = searchStatuses[movieTrackingKey]?.isSuccess;
-                return (
+        (() => {
+          const movieTrackingKey = `radarr-movie-${item.id}`;
+          const movieIsSearching = searchStatuses[movieTrackingKey]?.isSearching;
+          const movieIsSuccess = searchStatuses[movieTrackingKey]?.isSuccess;
+          const qStatus = episodeQueueMap.get(item.id);
+          
+          let statusColor = item.hasFile ? '#34C759' : 'var(--danger)';
+          if (movieIsSearching || movieIsSuccess || qStatus?.status === 'downloading') {
+            statusColor = 'var(--accent-blue)';
+          } else if (qStatus?.status === 'importing') {
+            statusColor = '#BF5AF2';
+          }
+          
+          return (
+            <div className="modern-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px', background: 'rgba(20,20,20,0.85)' }}>
+              <h3 style={{ margin: 0, textAlign: 'left' }}>Movie Management</h3>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 auto', color: 'var(--text-secondary)', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span>Status:</span>
+                  <strong style={{ color: statusColor, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    {(() => {
+                      if (movieIsSearching || movieIsSuccess) {
+                        return (
+                          <>
+                            <Loader2 size={14} className="spinner" />
+                            Searching...
+                          </>
+                        );
+                      }
+                      if (qStatus) {
+                        return (
+                          <>
+                            <Loader2 size={14} className="spinner" />
+                            {qStatus.status === 'importing' ? 'Importing' : 'Downloading'}
+                            {qStatus.pct !== undefined && <span style={{ opacity: 0.7, fontWeight: '400', marginLeft: '4px' }}>({qStatus.pct}%)</span>}
+                          </>
+                        );
+                      }
+                      if (!item.hasFile) return 'Missing';
+                      let qualityStr = '';
+                      let sizeStr = '';
+                      const file = item.movieFile || item.episodeFile;
+                      const qualityObj = item.quality || (file && file.quality);
+                      
+                      if (qualityObj) {
+                        if (qualityObj.quality && qualityObj.quality.name) {
+                          qualityStr = qualityObj.quality.name;
+                        } else if (qualityObj.name) {
+                          qualityStr = qualityObj.name;
+                        } else if (typeof qualityObj === 'string') {
+                          qualityStr = qualityObj;
+                        }
+                      }
+                      
+                      if (file && file.size) {
+                        const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(1);
+                        sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(file.size / (1024 * 1024))} MB`;
+                      } else if (item.sizeOnDisk > 0) {
+                        const sizeGB = (item.sizeOnDisk / (1024 * 1024 * 1024)).toFixed(1);
+                        sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(item.sizeOnDisk / (1024 * 1024))} MB`;
+                      }
+                      
+                      if (qualityStr && sizeStr) return `${qualityStr} (${sizeStr})`;
+                      if (qualityStr) return qualityStr;
+                      if (sizeStr) return sizeStr;
+                      return 'Downloaded';
+                    })()}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                  <button 
+                    className="btn btn-secondary media-action-btn" 
+                    onClick={() => setInteractiveModalData({ item, isRadarr: true, title: item.title })}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    title="Interactive Search"
+                  >
+                    <List size={16} /> <span className="btn-text">Interactive Search</span>
+                  </button>
+                  <button 
+                    className="btn btn-secondary media-action-btn" 
+                    onClick={() => setHistoryModalData({ itemId: item.id, isRadarr: true, title: item.title })}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    title="View History"
+                  >
+                    <Clock size={16} /> <span className="btn-text">History</span>
+                  </button>
                   <button 
                     className={`btn ${movieIsSuccess ? 'btn-primary' : 'btn-secondary'} media-action-btn`} 
                     onClick={handleMovieSearch}
@@ -435,11 +492,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                     {movieIsSearching ? <Loader2 size={16} className="spinner" /> : <Search size={16} />} 
                     <span className="btn-text">{movieIsSuccess ? 'Searched!' : 'Auto Search'}</span>
                   </button>
-                );
-              })()}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {isLoadingEpisodes ? (

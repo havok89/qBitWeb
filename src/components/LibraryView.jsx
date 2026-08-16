@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Search } from 'lucide-react';
-import { getAllMovies } from '../radarrApi';
-import { getAllSeries } from '../sonarrApi';
+import { getAllMovies, getMovieQueue } from '../radarrApi';
+import { getAllSeries, getQueue } from '../sonarrApi';
 import MediaCard from './MediaCard';
 
 const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, radarrAvailable = true }) => {
   const [library, setLibrary] = useState([]);
+  const [queueStatusMap, setQueueStatusMap] = useState(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
@@ -34,6 +35,29 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
         });
         
         setLibrary(combined);
+
+        // Fetch initial queue state
+        const qPromises = [];
+        if (radarrAvailable) qPromises.push(getMovieQueue().catch(() => []));
+        else qPromises.push(Promise.resolve([]));
+
+        if (sonarrAvailable) qPromises.push(getQueue().catch(() => []));
+        else qPromises.push(Promise.resolve([]));
+
+        const [movieQ, seriesQ] = await Promise.all(qPromises);
+        const qMap = new Map();
+        
+        movieQ.forEach(q => {
+          const status = q.status === 'completed' ? 'importing' : 'downloading';
+          qMap.set(`radarr-${q.movieId}`, status);
+        });
+        
+        seriesQ.forEach(q => {
+          const status = q.status === 'completed' ? 'importing' : 'downloading';
+          qMap.set(`sonarr-${q.seriesId}`, status);
+        });
+        
+        setQueueStatusMap(qMap);
       } catch (err) {
         console.error("Failed to load library", err);
       } finally {
@@ -83,7 +107,7 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
             <div key={`${item._type}-${item.id}`} onClick={() => onSelectMedia(item, item._type === 'radarr')} style={{ cursor: 'pointer' }}>
               <MediaCard 
                 item={item} 
-                isDownloading={false} 
+                queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)} 
                 hideSearch={true} 
               />
             </div>
