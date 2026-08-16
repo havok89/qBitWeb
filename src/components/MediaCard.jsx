@@ -4,9 +4,10 @@ import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCl
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
+import HistoryModal from './HistoryModal';
 import LazyImage from './LazyImage';
 
-const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
+const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
   
   const [isSearching, setIsSearching] = useState(false);
@@ -20,6 +21,9 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
   const [isUnmonitored, setIsUnmonitored] = useState(false);
   const [isUnmonitoring, setIsUnmonitoring] = useState(false);
   const [showConfirmUnmonitor, setShowConfirmUnmonitor] = useState(false);
+
+  // History State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Status override state
   const [isPendingDownload, setIsPendingDownload] = useState(false);
@@ -195,11 +199,15 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
 
   const modalTitleDisplay = isRadarr 
     ? `${mainTitle} (${subTitle})`
-    : `S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')} - ${itemTitle}`;
+    : isSonarrSeries 
+      ? mainTitle
+      : `S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')} - ${itemTitle}`;
 
   const unmonitorConfirmDisplay = isRadarr
     ? `${mainTitle} (${subTitle})`
-    : `${mainTitle} - S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')} - ${itemTitle}`;
+    : isSonarrSeries
+      ? mainTitle
+      : `${mainTitle} - S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')} - ${itemTitle}`;
 
   return (
     <div className="modern-card sonarr-card" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -274,6 +282,15 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
               style={(item.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
               {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : <EyeOff size={18} />}
+            </button>
+          )}
+          {!hideHistory && (
+            <button 
+              className="icon-btn" 
+              onClick={(e) => { e.stopPropagation(); setShowHistoryModal(true); }} 
+              title="View History"
+            >
+              <Clock size={18} />
             </button>
           )}
           <button 
@@ -375,6 +392,19 @@ const MediaCard = ({ item, queueStatus, hideSearch, onSelectMedia }) => {
             </div>
           </div>
         </div>,
+        document.body
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && createPortal(
+        <HistoryModal 
+          isOpen={showHistoryModal} 
+          onClose={() => setShowHistoryModal(false)} 
+          itemId={item.id} 
+          isRadarr={isRadarr} 
+          isSeries={isSonarrSeries}
+          title={modalTitleDisplay} 
+        />,
         document.body
       )}
     </div>

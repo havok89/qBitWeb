@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, Ch
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
+import HistoryModal from './HistoryModal';
 import LazyImage from './LazyImage';
 
 const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
@@ -28,6 +29,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   
   // Interactive search state per episode
   const [interactiveModalData, setInteractiveModalData] = useState(null); // { item, isRadarr, title }
+
+  // History state
+  const [historyModalData, setHistoryModalData] = useState(null); // { itemId, isRadarr, title }
 
   // Collapsed seasons state
   const [collapsedSeasons, setCollapsedSeasons] = useState({});
@@ -269,6 +273,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
         <h1 style={{ margin: 0, fontSize: '24px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.title} {item.year ? `(${item.year})` : ''}
         </h1>
+        {!isRadarr && (
+          <button className="icon-btn" onClick={() => setHistoryModalData({ itemId: item.id, isRadarr: false, isSeries: true, title: item.title })} title="Series History">
+            <Clock size={20} />
+          </button>
+        )}
         <button className="icon-btn" onClick={() => setShowSettings(true)}>
           <Settings size={20} />
         </button>
@@ -356,6 +365,14 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                 <List size={16} /> <span className="btn-text">Interactive Search</span>
               </button>
               <button 
+                className="btn btn-secondary media-action-btn" 
+                onClick={() => setHistoryModalData({ itemId: item.id, isRadarr: true, title: item.title })}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                title="View History"
+              >
+                <Clock size={16} /> <span className="btn-text">History</span>
+              </button>
+              <button 
                 className={`btn ${searchSuccessIds[item.id] ? 'btn-primary' : 'btn-secondary'} media-action-btn`} 
                 onClick={handleMovieSearch}
                 disabled={searchingIds[item.id]}
@@ -431,6 +448,14 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button 
+                      className="icon-btn" 
+                      onClick={(e) => { e.stopPropagation(); setHistoryModalData({ itemId: item.id, isRadarr: false, isSeries: true, seasonNumber: seasonNum, title: `${item.title} - ${seasonNum === 0 ? 'Specials' : 'Season ' + seasonNum}` }); }} 
+                      title="Season History"
+                      style={{ background: 'transparent' }}
+                    >
+                      <Clock size={18} />
+                    </button>
                     <button 
                       className="icon-btn" 
                       onClick={(e) => { e.stopPropagation(); handleSeasonInteractiveSearch(seasonNum); }} 
@@ -528,6 +553,13 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 style={{ opacity: isUnaired ? 0.3 : 1 }}
                               >
                                 <List size={16} />
+                              </button>
+                              <button 
+                                className="icon-btn" 
+                                title="View History"
+                                onClick={() => setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` })}
+                              >
+                                <Clock size={16} />
                               </button>
                               <button 
                                 className="icon-btn" 
@@ -642,6 +674,19 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
           onSearchSuccess={() => {
             // Optional local visual state change
           }}
+        />
+      )}
+
+      {/* History Modal */}
+      {historyModalData && (
+        <HistoryModal
+          isOpen={true}
+          onClose={() => setHistoryModalData(null)}
+          itemId={historyModalData.itemId}
+          isRadarr={historyModalData.isRadarr}
+          isSeries={historyModalData.isSeries}
+          seasonNumber={historyModalData.seasonNumber}
+          title={historyModalData.title}
         />
       )}
     </div>

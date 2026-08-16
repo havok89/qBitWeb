@@ -176,3 +176,9 @@ export const updateMovie = async (movieData) => {
   }
   return res.json();
 };
+
+export const getMovieHistory = async (movieId) => {
+  const res = await fetch(`/radarr/api/v3/history/movie?movieId=${movieId}`);
+  const data = await handleResponse(res);
+  return Array.isArray(data) ? data : (data.records || []);
+};

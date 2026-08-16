@@ -223,6 +223,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
                     item={item} 
                     queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)}
                     hideSearch={true}
+                    hideHistory={true}
                     onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
                   />
                 </div>
@@ -238,6 +239,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
                 item={item} 
                 queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)}
                 hideSearch={mode === 'recent'}
+                hideHistory={mode === 'missing' || mode === 'upcoming'}
                 onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
               />
             </div>
