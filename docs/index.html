@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>qBitWeb - The Modern Media Server Interface</title>
+    <meta name="description" content="A beautiful, unified web interface for managing torrents, Sonarr, and Radarr all from one place.">
+    <link rel="stylesheet" href="assets/style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <i data-lucide="zap"></i>
+                qBitWeb
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#install">Install</a>
+                <a href="https://github.com/havok89/qBitWeb" target="_blank" style="color: var(--text-primary);">GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero container">
+            <h1>The modern interface for<br>your media servers.</h1>
+            <p>A beautiful, unified dashboard to manage qBittorrent, Sonarr, and Radarr. Mobile optimized, lightning fast, and incredibly easy to self-host.</p>
+            
+            <div class="hero-actions">
+                <a href="#install" class="btn btn-primary">
+                    <i data-lucide="terminal" style="width: 18px;"></i>
+                    Install via Docker
+                </a>
+                <a href="https://github.com/havok89/qBitWeb" target="_blank" class="btn btn-secondary">
+                    <i data-lucide="github" style="width: 18px;"></i>
+                    View on GitHub
+                </a>
+            </div>
+
+            <div class="hero-image-wrapper">
+                <img src="assets/images/media-details.png" alt="qBitWeb Dashboard" class="hero-image">
+            </div>
+        </section>
+
+        <section id="features" class="features container">
+            <div class="section-header">
+                <h2>Everything you need, in one place.</h2>
+                <p>Stop jumping between tabs. qBitWeb brings your entire media ecosystem together.</p>
+            </div>
+
+            <div class="bento-grid">
+                <!-- Large Card -->
+                <div class="bento-card large">
+                    <div class="bento-content">
+                        <div class="bento-icon">
+                            <i data-lucide="search"></i>
+                        </div>
+                        <h3>Interactive Search & Queue</h3>
+                        <p>Search for specific episodes or movies directly from the app. Instantly trigger downloads, view releases, and watch the real-time download progress right from the media card without ever opening qBittorrent.</p>
+                    </div>
+                    <img src="assets/images/missing-filters.png" alt="Missing and Queues" class="bento-image">
+                </div>
+
+                <!-- Medium Card 1 -->
+                <div class="bento-card medium">
+                    <div class="bento-icon">
+                        <i data-lucide="library"></i>
+                    </div>
+                    <h3>Unified Library</h3>
+                    <p>View your entire Radarr movie collection and Sonarr TV shows in a single, beautiful Netflix-style grid. Quickly see what's missing, what's upcoming, and what was recently added.</p>
+                    <img src="assets/images/recently-added.png" alt="Library View" class="bento-image-bottom">
+                </div>
+
+                <!-- Medium Card 2 -->
+                <div class="bento-card medium">
+                    <div class="bento-icon">
+                        <i data-lucide="download-cloud"></i>
+                    </div>
+                    <h3>Full Torrent Control</h3>
+                    <p>A sleek, mobile-friendly interface for your qBittorrent client. Pause, resume, delete, or add new torrents on the go. Built-in smart categorization separates movies, TV shows, and uncategorized downloads.</p>
+                    <img src="assets/images/torrent-list.png" alt="Torrent List" class="bento-image-bottom">
+                </div>
+
+                <!-- Large Card 2 -->
+                <div class="bento-card large reverse">
+                    <div class="bento-content">
+                        <div class="bento-icon">
+                            <i data-lucide="bell"></i>
+                        </div>
+                        <h3>Global Notifications</h3>
+                        <p>Stay updated no matter where you are in the app. Automatic toast notifications alert you when background searches complete, when media is grabbed, or if no releases were found for your requested quality profile.</p>
+                    </div>
+                    <img src="assets/images/toast-not-found.png" alt="Toast Notification" class="bento-image">
+                </div>
+            </div>
+        </section>
+
+        <section id="install" class="install container">
+            <div class="section-header">
+                <h2>Ready to host?</h2>
+                <p>Deploy in seconds using our official Docker image.</p>
+            </div>
+            
+            <div class="code-block">
+<pre><code>version: '3'
+services:
+  qbitweb:
+    image: ghcr.io/havok89/qbitweb:latest
+    container_name: qbitweb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - QBITTORRENT_URL=http://192.168.1.100:8080
+      - QBITTORRENT_USERNAME=admin
+      - QBITTORRENT_PASSWORD=adminadmin
+      - SONARR_URL=http://192.168.1.101:8989
+      - SONARR_API_KEY=your_sonarr_api_key_here
+      - RADARR_URL=http://192.168.1.102:7878
+      - RADARR_API_KEY=your_radarr_api_key_here
+    restart: unless-stopped</code></pre>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="logo" style="font-size: 16px;">
+                <i data-lucide="zap" style="width: 16px;"></i>
+                qBitWeb
+            </div>
+            <div class="footer-links">
+                <a href="https://github.com/havok89/qBitWeb/issues" target="_blank">Report Issue</a>
+                <a href="https://github.com/havok89/qBitWeb" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
