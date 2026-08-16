@@ -8,9 +8,9 @@ export const useToast = () => useContext(ToastContext);
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message) => {
+  const addToast = useCallback((message, options = {}) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    setToasts(prev => [...prev, { id, message }]);
+    setToasts(prev => [...prev, { id, message, duration: options.duration || 5000 }]);
   }, []);
 
   const removeToast = useCallback((id) => {
@@ -24,16 +24,17 @@ export const ToastProvider = ({ children }) => {
       {/* Toast Container */}
       <div style={{
         position: 'fixed',
-        top: '24px',
+        top: '80px',
         right: '24px',
+        zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        zIndex: 9999,
-        pointerEvents: 'none' // Allow clicks to pass through empty space
+        alignItems: 'center',
+        pointerEvents: 'none'
       }}>
-        {toasts.map(toast => (
-          <Toast key={toast.id} message={toast.message} onClose={() => removeToast(toast.id)} />
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} duration={t.duration} onClose={() => removeToast(t.id)} />
         ))}
       </div>
     </ToastContext.Provider>

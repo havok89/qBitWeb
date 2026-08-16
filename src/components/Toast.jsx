@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-const Toast = ({ message, onClose }) => {
+const Toast = ({ message, onClose, duration = 5000 }) => {
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    const duration = 5000;
     const timer = setTimeout(() => {
       handleClose();
     }, duration);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [duration]);
 
   const handleClose = () => {
     setIsClosing(true);
@@ -84,7 +83,7 @@ const Toast = ({ message, onClose }) => {
         height: '3px',
         background: 'var(--accent-blue)',
         width: '100%',
-        animation: 'toast-progress 5s linear forwards'
+        animation: `toast-progress ${duration}ms linear forwards`
       }} />
       
       <style dangerouslySetInnerHTML={{__html: `

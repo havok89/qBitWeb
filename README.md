@@ -16,6 +16,7 @@ qBitWeb serves as a frontend for **qBittorrent**, **Sonarr**, and **Radarr**. It
 - **Torrent File Manager**: Open any torrent to view a hierarchical folder tree of its contents. Search, filter, and selectively toggle files or entire directories.
 - **Global Toast Notifications**: Search results from Sonarr and Radarr natively display as clean toast notifications in the UI, letting you know instantly when downloads begin or if no results were found.
 - **Active Searches Modal**: A global spinning indicator tracks any ongoing searches across the app. Tap it to view a modal of all currently active background searches.
+- **Auto-Update Notifications**: Automatically checks for new versions of qBitWeb in the background and displays a notification banner so you never miss a release.
 - **Secure Authentication**: Built-in password protection and WebAuthn Passkey support.
 
 ## Screenshots

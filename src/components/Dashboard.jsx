@@ -12,8 +12,9 @@ import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar,
 import LibraryView from './LibraryView';
 import MediaDetailsRoute from './MediaDetailsRoute';
 import { useCommand } from '../CommandContext';
+import pkg from '../../package.json';
 
-const Dashboard = ({ authStatus, onLogin, onLogout }) => {
+const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
   const [torrents, setTorrents] = useState([]);
   const [error, setError] = useState(null);
   
@@ -263,8 +264,20 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
           )}
 
           {authStatus?.authenticated && (
-            <button className="icon-btn" onClick={() => setShowSettingsModal(true)} title="Settings">
-              <Settings size={20} strokeWidth={2} />
+            <button className="icon-btn" onClick={() => setShowSettingsModal(true)} title="Settings" style={{ position: 'relative' }}>
+              <Settings size={20} />
+              {updateAvailable && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-2px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#ff4d4d',
+                  borderRadius: '50%',
+                  border: '2px solid var(--bg-color)'
+                }} />
+              )}
             </button>
           )}
         </div>
@@ -403,7 +416,35 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
         <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Settings</h3>
-            <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {updateAvailable && (
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(191, 90, 242, 0.1)',
+                border: '1px solid rgba(191, 90, 242, 0.2)',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '600', color: '#BF5AF2', marginBottom: '2px', fontSize: '14px' }}>Update Available</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>qBitWeb v{updateAvailable} is out now.</div>
+                </div>
+                <a 
+                  href={`https://github.com/havok89/qBitWeb/releases/tag/v${updateAvailable}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px' }}
+                >
+                  View Notes
+                </a>
+              </div>
+            )}
+            
+            <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {qbittorrentAvailable && (
                 <>
                   <div className="input-group">
@@ -493,6 +534,9 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
                     {isSavingSettings ? 'Saving...' : 'Save Settings'}
                   </button>
                 )}
+              </div>
+              <div style={{ textAlign: 'center', marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                qBitWeb v{pkg.version}
               </div>
             </form>
           </div>

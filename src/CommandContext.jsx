@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { getRadarrCommandStatus } from './radarrApi';
 import { getSonarrCommandStatus } from './sonarrApi';
 import { useToast } from './ToastContext';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 const CommandContext = createContext();
 
@@ -63,20 +64,35 @@ export const CommandProvider = ({ children }) => {
               [trackingKey]: { isSearching: false, isSuccess: true, title, commandId, isRadarr }
             }));
             
+            let isFound = true;
             let parsedMessage = commandData.message || "Search completed successfully";
             if (parsedMessage.toLowerCase().includes("reports downloaded")) {
               const match = parsedMessage.match(/(\d+)\s+reports downloaded/i);
               if (match) {
                 const num = parseInt(match[1], 10);
-                parsedMessage = num > 0 ? "Download started" : "No downloads found";
+                if (num > 0) {
+                  parsedMessage = "Download started";
+                } else {
+                  parsedMessage = "No downloads found";
+                  isFound = false;
+                }
               }
             }
             
-            if (title) {
-              addToast(`${title}\n${parsedMessage}`);
-            } else {
-              addToast(parsedMessage);
-            }
+            addToast(
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {isFound 
+                  ? <CheckCircle2 size={24} color="#4caf50" style={{ flexShrink: 0 }} />
+                  : <XCircle size={24} color="#ff4d4d" style={{ flexShrink: 0 }} />
+                }
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {title && <span style={{ fontWeight: '600' }}>{title}</span>}
+                  <span style={{ fontSize: '14px', color: title ? 'var(--text-secondary)' : 'inherit' }}>
+                    {parsedMessage}
+                  </span>
+                </div>
+              </div>
+            );
             
             // Wait 5 seconds before clearing the success checkmark
             activeTimeouts.current[trackingKey] = setTimeout(() => {
