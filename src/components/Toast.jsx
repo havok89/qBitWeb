@@ -6,7 +6,7 @@ const Toast = ({ message, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    const duration = 10000;
+    const duration = 5000;
     const intervalTime = 16;
     let timer;
     let currentProgress = 100;

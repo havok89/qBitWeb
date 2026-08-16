@@ -11,6 +11,7 @@ import { checkRadarrStatus, deleteMovie } from '../radarrApi';
 import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database } from 'lucide-react';
 import LibraryView from './LibraryView';
 import MediaDetailsRoute from './MediaDetailsRoute';
+import { useCommand } from '../CommandContext';
 
 const Dashboard = ({ authStatus, onLogin, onLogout }) => {
   const [torrents, setTorrents] = useState([]);
@@ -36,6 +37,10 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
   const [maxActiveDownloads, setMaxActiveDownloads] = useState(3);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [passkeyMsg, setPasskeyMsg] = useState({ text: '', type: '' });
+
+  const { searchStatuses } = useCommand();
+  const isSearchActive = Object.values(searchStatuses).some(s => s?.isSearching);
+  const [showSearchesModal, setShowSearchesModal] = useState(false);
 
   useEffect(() => {
     if (showSettingsModal && qbittorrentAvailable) {
@@ -225,8 +230,13 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="app-title" style={{ color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Zap size={32} fill="currentColor" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               {currentView === 'torrents' ? 'qBitWeb' : currentView === 'upcoming' ? 'Upcoming' : currentView === 'recent' ? 'Recently Added' : currentView === 'library' ? 'Library' : currentView === 'media' ? 'Media Details' : 'Missing'}
+              {isSearchActive && (
+                <span onClick={() => setShowSearchesModal(true)} style={{ cursor: 'pointer', display: 'flex' }}>
+                  <Loader2 size={20} className="spinner" style={{ color: 'var(--accent-blue)' }} />
+                </span>
+              )}
             </span>
           </div>
         </div>
@@ -497,6 +507,36 @@ const Dashboard = ({ authStatus, onLogin, onLogout }) => {
           sonarrAvailable={sonarrAvailable}
           radarrAvailable={radarrAvailable}
         />
+      )}
+
+      {/* Active Searches Modal */}
+      {showSearchesModal && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setShowSearchesModal(false); }}>
+          <div className="modal" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3>Active Searches</h3>
+              <button onClick={() => setShowSearchesModal(false)} className="icon-btn"><X size={20} /></button>
+            </div>
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.entries(searchStatuses).filter(([_, status]) => status.isSearching).length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>
+                  No searches currently in progress.
+                </div>
+              ) : (
+                Object.entries(searchStatuses)
+                  .filter(([_, status]) => status.isSearching)
+                  .map(([key, status]) => (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <Loader2 size={16} className="spinner" style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', wordBreak: 'break-word' }}>
+                        {status.title || 'Search in progress...'}
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bottom Navigation */}

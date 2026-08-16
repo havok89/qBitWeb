@@ -26,7 +26,7 @@ export const CommandProvider = ({ children }) => {
 
     setSearchStatuses(prev => ({
       ...prev,
-      [trackingKey]: { isSearching: true, isSuccess: false }
+      [trackingKey]: { isSearching: true, isSuccess: false, title }
     }));
 
     const pollStatus = async () => {
@@ -44,7 +44,7 @@ export const CommandProvider = ({ children }) => {
           if (status === 'completed') {
             setSearchStatuses(prev => ({
               ...prev,
-              [trackingKey]: { isSearching: false, isSuccess: true }
+              [trackingKey]: { isSearching: false, isSuccess: true, title }
             }));
             
             let parsedMessage = commandData.message || "Search completed successfully";
