@@ -118,7 +118,32 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
     statusColor = statusBadge.toLowerCase() === 'ended' ? 'var(--text-secondary)' : '#34C759';
   } else {
     if (item.hasFile) {
-      statusBadge = 'Downloaded';
+      let qualityStr = '';
+      let sizeStr = '';
+      const file = item.movieFile || item.episodeFile;
+      const qualityObj = item.quality || (file && file.quality);
+      
+      if (qualityObj) {
+        if (qualityObj.quality && qualityObj.quality.name) {
+          qualityStr = qualityObj.quality.name;
+        } else if (qualityObj.name) {
+          qualityStr = qualityObj.name;
+        } else if (typeof qualityObj === 'string') {
+          qualityStr = qualityObj;
+        }
+      }
+      
+      const sizeBytes = file ? file.size : (item.sizeOnDisk > 0 ? item.sizeOnDisk : null);
+      if (sizeBytes) {
+        const sizeGB = (sizeBytes / (1024 * 1024 * 1024)).toFixed(1);
+        sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(sizeBytes / (1024 * 1024))} MB`;
+      }
+      
+      if (qualityStr && sizeStr) statusBadge = `${qualityStr} (${sizeStr})`;
+      else if (qualityStr) statusBadge = qualityStr;
+      else if (sizeStr) statusBadge = sizeStr;
+      else statusBadge = 'Downloaded';
+      
       statusColor = '#34C759';
     } else if (localQueueStatus === 'importing') {
       statusBadge = 'Importing';
@@ -262,7 +287,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
                 <>
                   {statusBadge === 'Missing' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Unaired' && <Clock size={14} style={{ marginRight: '4px' }} />}
-                  {statusBadge === 'Downloaded' && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
+                  {(item.hasFile || statusBadge === 'Downloaded') && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                 </>

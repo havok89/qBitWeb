@@ -68,7 +68,9 @@ export const getRecentlyImportedMovies = async () => {
   return data.records.map(record => ({
     ...record.movie,
     hasFile: true,
-    historyDate: record.date
+    historyDate: record.date,
+    quality: record.quality,
+    sizeOnDisk: record.data?.size ? parseInt(record.data.size, 10) : undefined
   }));
 };
 

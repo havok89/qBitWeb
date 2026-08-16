@@ -64,7 +64,9 @@ export const getRecentlyImported = async () => {
     ...record.episode,
     hasFile: true,
     series: record.series,
-    historyDate: record.date
+    historyDate: record.date,
+    quality: record.quality,
+    sizeOnDisk: record.data?.size ? parseInt(record.data.size, 10) : undefined
   }));
 };
 
@@ -172,9 +174,32 @@ export const getAllSeries = async () => {
 };
 
 export const getEpisodes = async (seriesId) => {
-  const res = await fetch(`/sonarr/api/v3/episode?seriesId=${seriesId}&_t=${Date.now()}`, { cache: 'no-store' });
-  const data = await handleResponse(res);
-  return Array.isArray(data) ? data : [];
+  const [episodesRes, filesRes] = await Promise.all([
+    fetch(`/sonarr/api/v3/episode?seriesId=${seriesId}&_t=${Date.now()}`, { cache: 'no-store' }),
+    fetch(`/sonarr/api/v3/episodefile?seriesId=${seriesId}&_t=${Date.now()}`, { cache: 'no-store' }).catch(() => null)
+  ]);
+  
+  const episodesData = await handleResponse(episodesRes);
+  const episodes = Array.isArray(episodesData) ? episodesData : [];
+  
+  if (filesRes && filesRes.ok) {
+    try {
+      const filesData = await handleResponse(filesRes);
+      const files = Array.isArray(filesData) ? filesData : [];
+      const fileMap = {};
+      files.forEach(f => { fileMap[f.id] = f; });
+      
+      episodes.forEach(ep => {
+        if (ep.episodeFileId && fileMap[ep.episodeFileId]) {
+          ep.episodeFile = fileMap[ep.episodeFileId];
+        }
+      });
+    } catch(e) {
+      console.error("Failed to map episode files", e);
+    }
+  }
+  
+  return episodes;
 };
 
 export const deleteSeries = async (seriesId, deleteFiles = true) => {

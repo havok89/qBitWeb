@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Settings, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Edit2, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles } from '../radarrApi';
 import InteractiveSearchModal from './InteractiveSearchModal';
@@ -18,6 +18,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [qualityProfiles, setQualityProfiles] = useState([]);
   const [selectedQualityProfile, setSelectedQualityProfile] = useState(initialItem.qualityProfileId);
+  const [selectedSeriesType, setSelectedSeriesType] = useState(initialItem.seriesType || 'standard');
+  const [selectedMonitored, setSelectedMonitored] = useState(initialItem.monitored !== undefined ? initialItem.monitored : true);
+  const [selectedSeasonFolder, setSelectedSeasonFolder] = useState(initialItem.seasonFolder !== undefined ? initialItem.seasonFolder : true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Search state per episode
@@ -64,6 +67,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     setIsSavingSettings(true);
     try {
       const updatedData = { ...item, qualityProfileId: Number(selectedQualityProfile) };
+      if (!isRadarr) {
+        updatedData.seriesType = selectedSeriesType;
+        updatedData.monitored = selectedMonitored;
+        updatedData.seasonFolder = selectedSeasonFolder;
+      }
       const result = isRadarr ? await updateMovie(updatedData) : await updateSeries(updatedData);
       setLocalItem(result);
       setShowSettings(false);
@@ -278,8 +286,8 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
             <Clock size={20} />
           </button>
         )}
-        <button className="icon-btn" onClick={() => setShowSettings(true)}>
-          <Settings size={20} />
+        <button className="icon-btn" onClick={() => setShowSettings(true)} title="Edit">
+          <Edit2 size={20} />
         </button>
         <button className="icon-btn danger" onClick={() => setShowDeleteConfirm(true)}>
           <Trash2 size={20} />
@@ -353,7 +361,38 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
           <h3 style={{ margin: 0, textAlign: 'left' }}>Movie Management</h3>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 auto', color: 'var(--text-secondary)', textAlign: 'left' }}>
-              Status: <strong style={{ color: item.hasFile ? '#34C759' : 'var(--danger)' }}>{item.hasFile ? 'Downloaded' : 'Missing'}</strong>
+              Status: <strong style={{ color: item.hasFile ? '#34C759' : 'var(--danger)' }}>
+                {(() => {
+                  if (!item.hasFile) return 'Missing';
+                  let qualityStr = '';
+                  let sizeStr = '';
+                  const file = item.movieFile || item.episodeFile;
+                  const qualityObj = item.quality || (file && file.quality);
+                  
+                  if (qualityObj) {
+                    if (qualityObj.quality && qualityObj.quality.name) {
+                      qualityStr = qualityObj.quality.name;
+                    } else if (qualityObj.name) {
+                      qualityStr = qualityObj.name;
+                    } else if (typeof qualityObj === 'string') {
+                      qualityStr = qualityObj;
+                    }
+                  }
+                  
+                  if (file && file.size) {
+                    const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(1);
+                    sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(file.size / (1024 * 1024))} MB`;
+                  } else if (item.sizeOnDisk > 0) {
+                    const sizeGB = (item.sizeOnDisk / (1024 * 1024 * 1024)).toFixed(1);
+                    sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(item.sizeOnDisk / (1024 * 1024))} MB`;
+                  }
+                  
+                  if (qualityStr && sizeStr) return `${qualityStr} (${sizeStr})`;
+                  if (qualityStr) return qualityStr;
+                  if (sizeStr) return sizeStr;
+                  return 'Downloaded';
+                })()}
+              </strong>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
               <button 
@@ -501,7 +540,31 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                           statusBadge = 'Searching...';
                           statusColor = 'var(--accent-blue)';
                         } else if (ep.hasFile) {
-                          statusBadge = 'Downloaded';
+                          let qualityStr = '';
+                          let sizeStr = '';
+                          const file = ep.episodeFile;
+                          const qualityObj = ep.quality || (file && file.quality);
+                          
+                          if (qualityObj) {
+                            if (qualityObj.quality && qualityObj.quality.name) {
+                              qualityStr = qualityObj.quality.name;
+                            } else if (qualityObj.name) {
+                              qualityStr = qualityObj.name;
+                            } else if (typeof qualityObj === 'string') {
+                              qualityStr = qualityObj;
+                            }
+                          }
+                          
+                          if (file && file.size) {
+                            const sizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(1);
+                            sizeStr = sizeGB >= 1 ? `${sizeGB} GB` : `${Math.round(file.size / (1024 * 1024))} MB`;
+                          }
+                          
+                          if (qualityStr && sizeStr) statusBadge = `${qualityStr} (${sizeStr})`;
+                          else if (qualityStr) statusBadge = qualityStr;
+                          else if (sizeStr) statusBadge = sizeStr;
+                          else statusBadge = 'Downloaded';
+                          
                           statusColor = '#34C759';
                         } else if (isUnaired) {
                           statusBadge = 'Unaired';
@@ -530,9 +593,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                   {new Date(ep.airDateUtc).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                 </div>
                               )}
-                              <div style={{ fontSize: '13px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', marginTop: ep.airDateUtc ? '0' : '4px' }}>
+                              <div style={{ fontSize: '10px', color: statusColor, display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', marginTop: ep.airDateUtc ? '0' : '4px' }}>
                                 {statusBadge === 'Missing' && <AlertCircle size={14} />}
-                                {statusBadge === 'Downloaded' && <CheckCircle2 size={14} />}
+                                {(ep.hasFile || statusBadge === 'Downloaded') && <CheckCircle2 size={14} />}
                                 {statusBadge === 'Unaired' && <Clock size={14} />}
                                 {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" />}
                                 {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" />}
@@ -594,7 +657,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
         <div className="modal-overlay" onClick={() => setShowSettings(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
             <div className="modal-header">
-              <h2>Media Settings</h2>
+              <h2>Edit Media</h2>
               <button className="icon-btn" onClick={() => setShowSettings(false)}>
                 <X size={20} />
               </button>
@@ -621,6 +684,53 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                   </select>
                 )}
               </div>
+
+              {!isRadarr && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                      Series Type
+                    </label>
+                    <select 
+                      className="form-input" 
+                      value={selectedSeriesType} 
+                      onChange={(e) => setSelectedSeriesType(e.target.value)}
+                      style={{ width: '100%', padding: '12px', background: '#222', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontSize: '15px', cursor: 'pointer' }}
+                    >
+                      <option value="standard">Standard</option>
+                      <option value="daily">Daily</option>
+                      <option value="anime">Anime</option>
+                    </select>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="edit-monitored"
+                      checked={selectedMonitored} 
+                      onChange={(e) => setSelectedMonitored(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                    />
+                    <label htmlFor="edit-monitored" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                      Monitored
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="edit-season-folder"
+                      checked={selectedSeasonFolder} 
+                      onChange={(e) => setSelectedSeasonFolder(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                    />
+                    <label htmlFor="edit-season-folder" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                      Use Season Folders
+                    </label>
+                  </div>
+                </>
+              )}
+              
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
                 <button className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cancel</button>
                 <button 
@@ -630,7 +740,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   {isSavingSettings && <Loader2 size={16} className="spinner" />}
-                  Save Settings
+                  Save Changes
                 </button>
               </div>
             </div>
