@@ -102,6 +102,9 @@
             <div class="section-header">
                 <h2>Ready to host?</h2>
                 <p>Deploy in seconds using our official Docker image.</p>
+                <p style="max-width: 600px; margin: 16px auto 0; font-size: 15px; color: var(--text-secondary);">
+                    <strong>Note:</strong> All environment variables below are entirely optional—you only need to provide connection details for the services you actually want to use. We highly recommend configuring an <code>AUTH_PASSWORD</code> if you plan to expose qBitWeb to the internet or outside of your secure local network.
+                </p>
             </div>
             
             <div class="code-block">
@@ -115,6 +118,7 @@ services:
     volumes:
       - ./data:/app/data
     environment:
+      - AUTH_PASSWORD=your_secure_password_here
       - QBITTORRENT_URL=http://192.168.1.100:8080
       - QBITTORRENT_USERNAME=admin
       - QBITTORRENT_PASSWORD=adminadmin
