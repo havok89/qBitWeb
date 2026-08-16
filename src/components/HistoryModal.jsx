@@ -58,11 +58,11 @@ const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumbe
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 10000 }}>
+    <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ zIndex: 10000 }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
         <div className="modal-header">
           <h2>History {title ? `- ${title}` : ''}</h2>
-          <button className="icon-btn" onClick={onClose}>
+          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
             <X size={24} />
           </button>
         </div>
