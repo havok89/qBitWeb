@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { getRadarrCommandStatus } from './radarrApi';
 import { getSonarrCommandStatus } from './sonarrApi';
 import { useToast } from './ToastContext';
@@ -8,10 +8,26 @@ const CommandContext = createContext();
 export const useCommand = () => useContext(CommandContext);
 
 export const CommandProvider = ({ children }) => {
-  const [searchStatuses, setSearchStatuses] = useState({});
+  const [searchStatuses, setSearchStatuses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('qbitweb_search_statuses');
+      return saved ? JSON.stringify(JSON.parse(saved)) !== '{}' ? JSON.parse(saved) : {} : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const activeIntervals = useRef({});
   const activeTimeouts = useRef({});
   const { addToast } = useToast();
+  
+  // Custom setter to always sync with localStorage
+  const updateSearchStatuses = useCallback((updater) => {
+    setSearchStatuses(prev => {
+      const newState = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('qbitweb_search_statuses', JSON.stringify(newState));
+      return newState;
+    });
+  }, []);
 
   const trackCommand = useCallback((trackingKey, commandId, isRadarr, title) => {
     if (!commandId) return;
@@ -24,9 +40,9 @@ export const CommandProvider = ({ children }) => {
       clearTimeout(activeTimeouts.current[trackingKey]);
     }
 
-    setSearchStatuses(prev => ({
+    updateSearchStatuses(prev => ({
       ...prev,
-      [trackingKey]: { isSearching: true, isSuccess: false, title }
+      [trackingKey]: { isSearching: true, isSuccess: false, title, commandId, isRadarr }
     }));
 
     const pollStatus = async () => {
@@ -42,9 +58,9 @@ export const CommandProvider = ({ children }) => {
           delete activeIntervals.current[trackingKey];
           
           if (status === 'completed') {
-            setSearchStatuses(prev => ({
+            updateSearchStatuses(prev => ({
               ...prev,
-              [trackingKey]: { isSearching: false, isSuccess: true, title }
+              [trackingKey]: { isSearching: false, isSuccess: true, title, commandId, isRadarr }
             }));
             
             let parsedMessage = commandData.message || "Search completed successfully";
@@ -64,7 +80,7 @@ export const CommandProvider = ({ children }) => {
             
             // Wait 5 seconds before clearing the success checkmark
             activeTimeouts.current[trackingKey] = setTimeout(() => {
-              setSearchStatuses(prev => {
+              updateSearchStatuses(prev => {
                 const newState = { ...prev };
                 delete newState[trackingKey];
                 return newState;
@@ -73,7 +89,7 @@ export const CommandProvider = ({ children }) => {
             }, 5000);
           } else {
             // If it failed, clear the status immediately
-            setSearchStatuses(prev => {
+            updateSearchStatuses(prev => {
               const newState = { ...prev };
               delete newState[trackingKey];
               return newState;
@@ -88,7 +104,17 @@ export const CommandProvider = ({ children }) => {
     // Start polling every 2 seconds
     activeIntervals.current[trackingKey] = setInterval(pollStatus, 2000);
     pollStatus();
-  }, [addToast]);
+  }, [addToast, updateSearchStatuses]);
+
+  // Re-hydrate commands on mount
+  useEffect(() => {
+    Object.entries(searchStatuses).forEach(([key, status]) => {
+      if (status.isSearching && status.commandId) {
+        trackCommand(key, status.commandId, status.isRadarr, status.title);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <CommandContext.Provider value={{ searchStatuses, trackCommand }}>

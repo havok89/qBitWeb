@@ -2,26 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 const Toast = ({ message, onClose }) => {
-  const [progress, setProgress] = useState(100);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     const duration = 5000;
-    const intervalTime = 16;
-    let timer;
-    let currentProgress = 100;
-    
-    timer = setInterval(() => {
-      currentProgress -= (intervalTime / duration) * 100;
-      if (currentProgress <= 0) {
-        clearInterval(timer);
-        handleClose();
-      } else {
-        setProgress(currentProgress);
-      }
-    }, intervalTime);
+    const timer = setTimeout(() => {
+      handleClose();
+    }, duration);
 
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleClose = () => {
@@ -94,14 +83,18 @@ const Toast = ({ message, onClose }) => {
         left: 0,
         height: '3px',
         background: 'var(--accent-blue)',
-        width: `${progress}%`,
-        transition: 'width 0.1s linear'
+        width: '100%',
+        animation: 'toast-progress 5s linear forwards'
       }} />
       
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes toast-slide-in {
           from { transform: translateX(120%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes toast-progress {
+          from { width: 100%; }
+          to { width: 0%; }
         }
       `}} />
     </div>

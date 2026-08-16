@@ -268,6 +268,14 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     });
   };
 
+  const handleEpisodeInteractiveSearch = (ep, seasonNum) => {
+    setInteractiveModalData({ 
+      item: { id: ep.id }, 
+      isRadarr: false, 
+      title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` 
+    });
+  };
+
   const radarrMovieId = isRadarr ? item.id : null;
   const sonarrSeriesId = !isRadarr ? item.id : null;
 
@@ -700,11 +708,17 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 <Clock size={16} />
                               </button>
                               <button 
+                                className="icon-btn" 
+                                onClick={() => handleEpisodeInteractiveSearch(ep, seasonNum)} 
+                                title="Interactive Search"
+                              >
+                                <List size={16} />
+                              </button>
+                              <button 
                                 className={`icon-btn ${epIsSuccess ? 'primary' : ''}`} 
                                 onClick={() => handleEpisodeSearch(ep.id)} 
                                 title="Auto Search"
-                                disabled={isUnaired || epIsSearching}
-                                style={{ opacity: isUnaired ? 0.3 : 1 }}
+                                disabled={epIsSearching}
                               >
                                 {epIsSearching ? <Loader2 size={16} className="spinner" /> : <Search size={16} fill={epIsSuccess ? 'currentColor' : 'none'} />}
                               </button>
