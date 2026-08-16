@@ -164,6 +164,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     if (searchingIds[episodeId] || searchSuccessIds[episodeId]) return;
     
     setSearchingIds(prev => ({ ...prev, [episodeId]: true }));
+    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
       const success = await searchEpisode(episodeId);
       if (success) {
@@ -176,6 +177,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     } catch (e) {
       console.error(e);
     } finally {
+      await minWait;
       setSearchingIds(prev => ({ ...prev, [episodeId]: false }));
     }
   };
@@ -184,6 +186,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     if (searchingIds[item.id] || searchSuccessIds[item.id]) return;
     
     setSearchingIds(prev => ({ ...prev, [item.id]: true }));
+    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
       const success = await searchMovie(item.id);
       if (success) {
@@ -196,6 +199,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     } catch (e) {
       console.error(e);
     } finally {
+      await minWait;
       setSearchingIds(prev => ({ ...prev, [item.id]: false }));
     }
   };
@@ -204,6 +208,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     if (seasonSearchingIds[seasonNum] || seasonSearchSuccessIds[seasonNum]) return;
     
     setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: true }));
+    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
       const success = await searchSeason(item.id, seasonNum);
       if (success) {
@@ -215,6 +220,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     } catch (e) {
       console.error(e);
     } finally {
+      await minWait;
       setSeasonSearchingIds(prev => ({ ...prev, [seasonNum]: false }));
     }
   };

@@ -167,7 +167,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
   const handleSearch = async () => {
     if (isSearching || searchSuccess) return;
     setIsSearching(true);
-    const minWait = new Promise(resolve => setTimeout(resolve, 2000));
+    const minWait = new Promise(resolve => setTimeout(resolve, 5000));
     try {
       const success = isRadarr ? await searchMovie(item.id) : await searchEpisode(item.id);
       if (success) {
