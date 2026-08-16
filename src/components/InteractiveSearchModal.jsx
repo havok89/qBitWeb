@@ -82,11 +82,11 @@ const InteractiveSearchModal = ({ isOpen, onClose, item, isRadarr, modalTitleDis
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="modal-content interactive-search-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Releases for {modalTitleDisplay}</h2>
-          <button className="icon-btn" onClick={onClose}>
+          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
             <X size={24} />
           </button>
         </div>

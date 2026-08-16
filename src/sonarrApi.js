@@ -247,7 +247,7 @@ export const getEpisodeHistory = async (episodeId) => {
 };
 
 export const getSeriesHistory = async (seriesId, seasonNumber = null) => {
-  const res = await fetch(`/sonarr/api/v3/history?seriesId=${seriesId}`);
+  const res = await fetch(`/sonarr/api/v3/history/series?seriesId=${seriesId}`);
   const data = await handleResponse(res);
   let records = Array.isArray(data) ? data : (data.records || []);
   if (seasonNumber !== null) {

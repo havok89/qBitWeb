@@ -244,7 +244,11 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
       : `${mainTitle} - S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')} - ${itemTitle}`;
 
   return (
-    <div className="modern-card sonarr-card" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div 
+      className="modern-card sonarr-card" 
+      style={{ position: 'relative', overflow: 'hidden', cursor: onSelectMedia ? 'pointer' : 'default' }}
+      onClick={() => { if (onSelectMedia) onSelectMedia(); }}
+    >
       
       {/* Background Image with Overlay */}
       {bgSrc && (

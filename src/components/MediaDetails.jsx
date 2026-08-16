@@ -576,14 +576,6 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button 
                       className="icon-btn" 
-                      onClick={(e) => { e.stopPropagation(); setHistoryModalData({ itemId: item.id, isRadarr: false, isSeries: true, seasonNumber: seasonNum, title: `${item.title} - ${seasonNum === 0 ? 'Specials' : 'Season ' + seasonNum}` }); }} 
-                      title="Season History"
-                      style={{ background: 'transparent' }}
-                    >
-                      <Clock size={18} />
-                    </button>
-                    <button 
-                      className="icon-btn" 
                       onClick={(e) => { e.stopPropagation(); handleSeasonInteractiveSearch(seasonNum); }} 
                       title="Interactive Season Search"
                       style={{ background: 'transparent' }}
