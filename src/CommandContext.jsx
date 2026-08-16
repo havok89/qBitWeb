@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import { getRadarrCommandStatus } from './radarrApi';
 import { getSonarrCommandStatus } from './sonarrApi';
+import { useToast } from './ToastContext';
 
 const CommandContext = createContext();
 
@@ -10,8 +11,9 @@ export const CommandProvider = ({ children }) => {
   const [searchStatuses, setSearchStatuses] = useState({});
   const activeIntervals = useRef({});
   const activeTimeouts = useRef({});
+  const { addToast } = useToast();
 
-  const trackCommand = useCallback((trackingKey, commandId, isRadarr) => {
+  const trackCommand = useCallback((trackingKey, commandId, isRadarr, title) => {
     if (!commandId) return;
 
     // Clear any existing intervals/timeouts for this key
@@ -29,9 +31,11 @@ export const CommandProvider = ({ children }) => {
 
     const pollStatus = async () => {
       try {
-        const status = isRadarr 
+        const commandData = isRadarr 
           ? await getRadarrCommandStatus(commandId)
           : await getSonarrCommandStatus(commandId);
+
+        const status = commandData.status;
 
         if (status === 'completed' || status === 'failed') {
           clearInterval(activeIntervals.current[trackingKey]);
@@ -42,6 +46,21 @@ export const CommandProvider = ({ children }) => {
               ...prev,
               [trackingKey]: { isSearching: false, isSuccess: true }
             }));
+            
+            let parsedMessage = commandData.message || "Search completed successfully";
+            if (parsedMessage.toLowerCase().includes("reports downloaded")) {
+              const match = parsedMessage.match(/(\d+)\s+reports downloaded/i);
+              if (match) {
+                const num = parseInt(match[1], 10);
+                parsedMessage = num > 0 ? "Download started" : "No downloads found";
+              }
+            }
+            
+            if (title) {
+              addToast(`${title}\n${parsedMessage}`);
+            } else {
+              addToast(parsedMessage);
+            }
             
             // Wait 5 seconds before clearing the success checkmark
             activeTimeouts.current[trackingKey] = setTimeout(() => {
@@ -69,7 +88,7 @@ export const CommandProvider = ({ children }) => {
     // Start polling every 2 seconds
     activeIntervals.current[trackingKey] = setInterval(pollStatus, 2000);
     pollStatus();
-  }, []);
+  }, [addToast]);
 
   return (
     <CommandContext.Provider value={{ searchStatuses, trackCommand }}>

@@ -109,9 +109,9 @@ export const getSonarrCommandStatus = async (commandId) => {
   const res = await fetch(`/sonarr/api/v3/command/${commandId}`);
   if (res.ok) {
     const data = await handleResponse(res);
-    return data.status; // 'queued', 'started', 'completed', 'failed'
+    return data;
   }
-  return 'failed';
+  return { status: 'failed' };
 };
 
 export const getReleases = async (episodeId) => {

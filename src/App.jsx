@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { checkAuth } from './api';
 import { CommandProvider } from './CommandContext';
+import { ToastProvider } from './ToastContext';
 
 const Dashboard = lazy(() => import('./components/Dashboard'));
 
@@ -29,15 +30,17 @@ function App() {
 
   return (
     <div className="app-container">
-      <CommandProvider>
-        <Suspense fallback={<div className="empty-state">Loading module...</div>}>
-          <Dashboard 
-            authStatus={authStatus} 
-            onLogin={() => setAuthStatus({ ...authStatus, authenticated: true })} 
-            onLogout={() => setAuthStatus({ ...authStatus, authenticated: false })}
-          />
-        </Suspense>
-      </CommandProvider>
+      <ToastProvider>
+        <CommandProvider>
+          <Suspense fallback={<div className="empty-state">Loading module...</div>}>
+            <Dashboard 
+              authStatus={authStatus} 
+              onLogin={() => setAuthStatus({ ...authStatus, authenticated: true })} 
+              onLogout={() => setAuthStatus({ ...authStatus, authenticated: false })}
+            />
+          </Suspense>
+        </CommandProvider>
+      </ToastProvider>
     </div>
   );
 }

@@ -96,9 +96,9 @@ export const getRadarrCommandStatus = async (commandId) => {
   const res = await fetch(`/radarr/api/v3/command/${commandId}`);
   if (res.ok) {
     const data = await handleResponse(res);
-    return data.status; // e.g. 'queued', 'started', 'completed', 'failed'
+    return data;
   }
-  return 'failed';
+  return { status: 'failed' };
 };
 
 export const getMovieReleases = async (movieId) => {

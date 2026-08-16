@@ -196,7 +196,8 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
     try {
       const commandId = isRadarr ? await searchMovie(item.id) : await searchEpisode(item.id);
       if (commandId) {
-        trackCommand(trackingKey, commandId, isRadarr);
+        const titleStr = isRadarr ? item.title : (item.series?.title ? `${item.series.title} - ${item.title}` : item.title);
+        trackCommand(trackingKey, commandId, isRadarr, titleStr);
       } else {
         setIsPendingDownload(false);
       }

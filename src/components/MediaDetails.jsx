@@ -223,10 +223,12 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     try {
       const commandId = await searchEpisode(episodeId);
       if (commandId) {
-        trackCommand(trackingKey, commandId, false);
+        const ep = episodes.find(e => e.id === episodeId);
+        const epStr = ep ? `S${String(ep.seasonNumber).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')} - ${ep.title}` : '';
+        trackCommand(trackingKey, commandId, false, `${item.title} ${epStr}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to search episode", e);
     }
   };
 
@@ -237,10 +239,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     try {
       const commandId = await searchMovie(item.id);
       if (commandId) {
-        trackCommand(trackingKey, commandId, true);
+        trackCommand(trackingKey, commandId, true, item.title);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to search movie", e);
     }
   };
 
@@ -251,10 +253,10 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     try {
       const commandId = await searchSeason(item.id, seasonNum);
       if (commandId) {
-        trackCommand(trackingKey, commandId, false);
+        trackCommand(trackingKey, commandId, false, `${item.title} Season ${seasonNum}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to search season", e);
     }
   };
 
