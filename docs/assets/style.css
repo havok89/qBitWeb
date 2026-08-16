@@ -34,7 +34,8 @@ a {
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 /* Header */
@@ -91,7 +92,8 @@ header {
 
 /* Hero Section */
 .hero {
-  padding: 160px 0 100px;
+  padding-top: 160px;
+  padding-bottom: 100px;
   text-align: center;
   position: relative;
 }
@@ -102,7 +104,8 @@ header {
   top: -20%;
   left: 50%;
   transform: translateX(-50%);
-  width: 800px;
+  width: 100vw;
+  max-width: 800px;
   height: 600px;
   background: radial-gradient(circle, rgba(191, 90, 242, 0.15) 0%, rgba(0, 122, 255, 0.05) 40%, rgba(0,0,0,0) 70%);
   z-index: -1;
@@ -131,6 +134,7 @@ header {
   display: flex;
   gap: 16px;
   justify-content: center;
+  flex-wrap: wrap;
   margin-bottom: 80px;
 }
 
@@ -190,7 +194,8 @@ header {
 
 /* Features Grid */
 .features {
-  padding: 100px 0;
+  padding-top: 100px;
+  padding-bottom: 100px;
 }
 
 .section-header {
@@ -286,6 +291,7 @@ header {
 .bento-image {
   flex: 1;
   max-width: 500px;
+  width: 100%;
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
@@ -302,7 +308,8 @@ header {
 
 /* Install Section */
 .install {
-  padding: 100px 0;
+  padding-top: 100px;
+  padding-bottom: 100px;
   text-align: center;
 }
 
@@ -349,10 +356,37 @@ footer {
 }
 
 @media (max-width: 900px) {
+  .container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .features {
+    padding-top: 80px;
+    padding-bottom: 0;
+  }
+  .hero {
+    padding-top: 160px;
+    padding-bottom: 0;
+    text-align: center;
+    position: relative;
+  }
+  .hero-image-wrapper {
+    max-width: 70%;
+  }
+  .bento-card {
+    padding: 24px;
+  }
   .bento-card.large {
+    flex-direction: column;
+  }
+  .bento-card.large.reverse {
     flex-direction: column;
   }
   .bento-card.medium, .bento-card.small {
     grid-column: span 12;
+  }
+  .bento-image {
+    max-width: 85%;
+    margin: 32px auto 0;
   }
 }
