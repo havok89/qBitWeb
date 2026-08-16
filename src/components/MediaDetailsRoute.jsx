@@ -39,6 +39,17 @@ const MediaDetailsRoute = () => {
     };
 
     fetchItem();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchItem();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [type, id, isRadarr]);
 
   const handleBack = () => {

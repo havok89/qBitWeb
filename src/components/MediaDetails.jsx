@@ -9,6 +9,9 @@ import LazyImage from './LazyImage';
 
 const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [localItem, setLocalItem] = useState(initialItem);
+  useEffect(() => {
+    setLocalItem(initialItem);
+  }, [initialItem]);
   const item = localItem;
   const [episodes, setEpisodes] = useState([]);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(!isRadarr);
@@ -95,8 +98,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   };
 
   useEffect(() => {
+    let fetchEpisodes;
+    let fetchMovieQueue;
+
     if (!isRadarr) {
-      const fetchEpisodes = async () => {
+      fetchEpisodes = async () => {
         try {
           const [data, queueData] = await Promise.all([
             getEpisodes(item.id),
@@ -135,7 +141,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       fetchEpisodes();
     } else {
       // For Radarr, just fetch the queue
-      const fetchMovieQueue = async () => {
+      fetchMovieQueue = async () => {
         try {
           const queueData = await getMovieQueue().catch(() => []);
           const qMap = new Map();
@@ -152,6 +158,18 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
       };
       fetchMovieQueue();
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (!isRadarr && fetchEpisodes) fetchEpisodes();
+        if (isRadarr && fetchMovieQueue) fetchMovieQueue();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [item.id, isRadarr]);
 
   const handleDelete = async () => {
