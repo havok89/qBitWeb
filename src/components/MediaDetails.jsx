@@ -668,9 +668,6 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                           else statusBadge = 'Downloaded';
                           
                           statusColor = '#34C759';
-                        } else if (isUnaired) {
-                          statusBadge = 'Unaired';
-                          statusColor = 'var(--text-secondary)';
                         } else if (episodeQueueMap.get(ep.id)?.status === 'importing') {
                           statusBadge = 'Importing';
                           statusColor = '#BF5AF2';
@@ -678,6 +675,9 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                           statusBadge = 'Downloading';
                           statusColor = 'var(--accent-blue)';
                           spinnerColor = 'var(--accent-blue)';
+                        } else if (isUnaired) {
+                          statusBadge = 'Unaired';
+                          statusColor = 'var(--text-secondary)';
                         }
                         
                         const isLast = idx === arr.length - 1;

@@ -59,9 +59,9 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
           mergedData.sort((a, b) => new Date(b.historyDate) - new Date(a.historyDate));
         } else if (mode === 'missing') {
           mergedData.sort((a, b) => {
-            const titleA = a._type === 'radarr' ? a.title : a.series?.title;
-            const titleB = b._type === 'radarr' ? b.title : b.series?.title;
-            return (titleA || '').localeCompare(titleB || '');
+            const dateA = new Date(a._type === 'radarr' ? (a.digitalRelease || a.physicalRelease || a.inCinemas || a.added || 0) : (a.airDateUtc || 0));
+            const dateB = new Date(b._type === 'radarr' ? (b.digitalRelease || b.physicalRelease || b.inCinemas || b.added || 0) : (b.airDateUtc || 0));
+            return dateB - dateA; // Most recently missing first
           });
         }
 

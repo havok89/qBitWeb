@@ -37,9 +37,9 @@ export const getUpcoming = async () => {
   
   if (!Array.isArray(data)) return [];
   
-  // Filter out items whose air date has already passed
+  // Filter out items whose air date has already passed, unless they are missing
   const now = new Date();
-  return data.filter(episode => new Date(episode.airDateUtc) > now);
+  return data.filter(episode => new Date(episode.airDateUtc) > now || !episode.hasFile);
 };
 
 export const getMissing = async () => {

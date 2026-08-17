@@ -37,13 +37,13 @@ export const getUpcomingMovies = async () => {
   
   if (!Array.isArray(data)) return [];
   
-  // Filter out items whose digital release has already passed
+  // Filter out items whose digital release has already passed, unless they are missing
   const now = new Date();
   return data.filter(movie => {
     // Determine the release date to track (digital/physical is preferred)
     const releaseDate = movie.digitalRelease || movie.physicalRelease || movie.inCinemas;
     if (!releaseDate) return false;
-    return new Date(releaseDate) > now;
+    return new Date(releaseDate) > now || !movie.hasFile;
   });
 };
 
