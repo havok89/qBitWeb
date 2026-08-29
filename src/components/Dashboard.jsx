@@ -5,6 +5,8 @@ import TorrentCard from './TorrentCard';
 import MediaList from './MediaList';
 import Login from './Login';
 import AddMediaModal from './modals/AddMediaModal';
+import AddTorrentModal from './modals/AddTorrentModal';
+import ActiveSearchesModal from './modals/ActiveSearchesModal';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences, checkQbittorrentStatus } from '../api';
 import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
 import { checkRadarrStatus, deleteMovie } from '../radarrApi';
@@ -194,35 +196,15 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
     }
   };
 
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    if (!addUrls.trim() && (!addFiles || addFiles.length === 0)) return;
-    
-    setIsAdding(true);
-    const formData = new FormData();
-    
-    if (addUrls.trim()) {
-      formData.append('urls', addUrls);
+  const handleAdd = async (formData) => {
+    try {
+      await addTorrents(formData);
+      setShowAddModal(false);
+      fetchTorrents();
+    } catch (e) {
+      console.error("Failed to add torrents", e);
+      throw e;
     }
-    
-    if (addFiles) {
-      for (let i = 0; i < addFiles.length; i++) {
-        formData.append('torrents', addFiles[i]);
-      }
-    }
-    
-    if (selectedCategory) {
-      formData.append('category', selectedCategory);
-    }
-    
-    await addTorrents(formData);
-    
-    setIsAdding(false);
-    setShowAddModal(false);
-    setAddUrls('');
-    setAddFiles(null);
-    setSelectedCategory('');
-    fetchTorrents();
   };
 
 
@@ -341,82 +323,12 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
       )}
 
       {/* Add Torrent Modal */}
-      {showAddModal && currentView === 'torrents' && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Add New Torrent</h3>
-            <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label>Magnet Links or URLs (one per line)</label>
-                <textarea 
-                  value={addUrls}
-                  onChange={(e) => setAddUrls(e.target.value)}
-                  placeholder="magnet:?xt=urn:btih:..."
-                  rows={4}
-                  style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #333',
-                    background: '#222',
-                    color: '#fff',
-                    fontFamily: 'monospace',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div className="input-group">
-                <label>Or Upload .torrent Files</label>
-                <input 
-                  type="file" 
-                  multiple 
-                  accept=".torrent"
-                  onChange={(e) => setAddFiles(e.target.files)}
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: '1px dashed #555',
-                    background: '#222',
-                    color: '#fff',
-                    cursor: 'pointer'
-                  }}
-                />
-              </div>
-              
-              {categories.length > 0 && (
-                <div className="input-group">
-                  <label>Category (Optional)</label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #333',
-                      background: '#222',
-                      color: '#fff',
-                      width: '100%',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="">None</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isAdding || (!addUrls.trim() && (!addFiles || addFiles.length === 0))}>
-                  {isAdding ? 'Adding...' : 'Add Torrents'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddTorrentModal 
+        isOpen={showAddModal && currentView === 'torrents'}
+        onClose={() => setShowAddModal(false)}
+        categories={categories}
+        onAdd={handleAdd}
+      />
 
       {/* Settings Modal */}
       {showSettingsModal && (
@@ -568,34 +480,10 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
       )}
 
       {/* Active Searches Modal */}
-      {showSearchesModal && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setShowSearchesModal(false); }}>
-          <div className="modal" style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h3>Active Searches</h3>
-              <button onClick={() => setShowSearchesModal(false)} className="icon-btn"><X size={20} /></button>
-            </div>
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {Object.entries(searchStatuses).filter(([_, status]) => status.isSearching).length === 0 ? (
-                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>
-                  No searches currently in progress.
-                </div>
-              ) : (
-                Object.entries(searchStatuses)
-                  .filter(([_, status]) => status.isSearching)
-                  .map(([key, status]) => (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                      <Loader2 size={16} className="spinner" style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff', wordBreak: 'break-word' }}>
-                        {status.title || 'Search in progress...'}
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ActiveSearchesModal 
+        isOpen={showSearchesModal}
+        onClose={() => setShowSearchesModal(false)}
+      />
 
       {/* Bottom Navigation */}
       {(sonarrAvailable || radarrAvailable) && (
