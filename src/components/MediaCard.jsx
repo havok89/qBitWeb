@@ -208,7 +208,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
   };
 
   const handleInteractiveSearch = () => {
-    if (item.hasFile || isUnaired) return;
+    if (item.hasFile) return;
     setShowInteractiveModal(true);
   };
 
