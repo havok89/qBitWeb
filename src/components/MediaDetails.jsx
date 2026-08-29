@@ -97,18 +97,17 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     }
   };
 
-  const handleToggleEpisodeMonitor = async (ep) => {
-    const newMonitored = !ep.monitored;
+  const handleMovieSearch = async () => {
+    const trackingKey = `radarr-movie-${item.id}`;
+    if (searchStatuses[trackingKey]?.isSearching || searchStatuses[trackingKey]?.isSuccess) return;
+    
     try {
-      if (newMonitored) {
-        await monitorEpisode(ep.id);
-      } else {
-        await unmonitorEpisode(ep.id);
+      const commandId = await searchMovie(item.id);
+      if (commandId) {
+        trackCommand(trackingKey, commandId, true, item.title);
       }
-      setEpisodes(prev => prev.map(e => e.id === ep.id ? { ...e, monitored: newMonitored } : e));
-    } catch (err) {
-      console.error('Failed to toggle episode monitor', err);
-      alert('Failed to toggle episode monitor.');
+    } catch (e) {
+      console.error("Failed to search movie", e);
     }
   };
 
