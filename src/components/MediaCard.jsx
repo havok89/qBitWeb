@@ -4,8 +4,8 @@ import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCl
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
 import { useCommand } from '../CommandContext';
-import InteractiveSearchModal from './InteractiveSearchModal';
-import HistoryModal from './HistoryModal';
+import InteractiveSearchModal from './modals/InteractiveSearchModal';
+import HistoryModal from './modals/HistoryModal';
 import LazyImage from './LazyImage';
 
 const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }) => {

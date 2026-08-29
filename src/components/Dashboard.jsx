@@ -4,7 +4,7 @@ import { startRegistration } from '@simplewebauthn/browser';
 import TorrentCard from './TorrentCard';
 import MediaList from './MediaList';
 import Login from './Login';
-import AddMediaModal from './AddMediaModal';
+import AddMediaModal from './modals/AddMediaModal';
 import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences, checkQbittorrentStatus } from '../api';
 import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
 import { checkRadarrStatus, deleteMovie } from '../radarrApi';

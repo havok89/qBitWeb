@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import Modal from './Modal';
 import { createPortal } from 'react-dom';
 import { Loader2, X, Download, AlertCircle } from 'lucide-react';
-import { getReleases, getSeasonReleases, downloadRelease, getQueue as getSonarrQueue } from '../sonarrApi';
-import { getMovieReleases, downloadMovieRelease, getMovieQueue } from '../radarrApi';
+import { getReleases, getSeasonReleases, downloadRelease, getQueue as getSonarrQueue } from '../../sonarrApi';
+import { getMovieReleases, downloadMovieRelease, getMovieQueue } from '../../radarrApi';
 
 const InteractiveSearchModal = ({ isOpen, onClose, item, isRadarr, modalTitleDisplay, onSearchSuccess }) => {
   const [releases, setReleases] = useState([]);

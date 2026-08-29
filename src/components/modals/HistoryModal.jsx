@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, Download, AlertCircle, CheckCircle, FileText } from 'lucide-react';
-import { getMovieHistory } from '../radarrApi';
-import { getEpisodeHistory, getSeriesHistory } from '../sonarrApi';
+import { getMovieHistory } from '../../radarrApi';
+import { getEpisodeHistory, getSeriesHistory } from '../../sonarrApi';
 
 import Modal from './Modal';
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import Modal from './Modal';
 import { Search, Loader2, X, Image as ImageIcon, Film, Tv, ArrowLeft } from 'lucide-react';
-import { lookupMovie, getMovieQualityProfiles, getMovieRootFolders, addMovie } from '../radarrApi';
-import { lookupSeries, getSeriesQualityProfiles, getSeriesRootFolders, addSeries } from '../sonarrApi';
+import { lookupMovie, getMovieQualityProfiles, getMovieRootFolders, addMovie } from '../../radarrApi';
+import { lookupSeries, getSeriesQualityProfiles, getSeriesRootFolders, addSeries } from '../../sonarrApi';
 
 const AddMediaModal = ({ onClose, onAdded, initialSearchTerm = '', initialMode = 'movie', sonarrAvailable = true, radarrAvailable = true }) => {
   const [mode, setMode] = useState(initialMode); // 'movie' or 'series'
@@ -363,12 +364,15 @@ const AddMediaModal = ({ onClose, onAdded, initialSearchTerm = '', initialMode =
   };
 
   return (
+    <Modal>
     <div className="modal-overlay" onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
         {selectedItem ? renderDetailFlow() : renderSearchFlow()}
       </div>
     </div>
+    </Modal>
   );
 };
 
 export default AddMediaModal;
+
