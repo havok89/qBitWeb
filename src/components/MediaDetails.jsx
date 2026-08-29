@@ -59,16 +59,37 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [isTogglingMonitor, setIsTogglingMonitor] = useState(false);
 
   const handleToggleMonitor = async () => {
-    setIsTogglingMonitor(true);
-    try {
-      const updatedData = { ...item, monitored: !item.monitored };
-      const result = isRadarr ? await updateMovie(updatedData) : await updateSeries(updatedData);
-      setLocalItem(result);
-    } catch (e) {
-      console.error('Failed to toggle monitor', e);
-      alert('Failed to toggle monitor state.');
-    } finally {
-      setIsTogglingMonitor(false);
+    if (item.monitored) {
+      setUnmonitorTarget({
+        type: 'item',
+        title: item.title,
+        action: async () => {
+          setIsTogglingMonitor(true);
+          try {
+            const updatedData = { ...item, monitored: false };
+            const result = isRadarr ? await updateMovie(updatedData) : await updateSeries(updatedData);
+            setLocalItem(result);
+          } catch (e) {
+            console.error('Failed to unmonitor', e);
+            alert('Failed to unmonitor state.');
+          } finally {
+            setIsTogglingMonitor(false);
+            setUnmonitorTarget(null);
+          }
+        }
+      });
+    } else {
+      setIsTogglingMonitor(true);
+      try {
+        const updatedData = { ...item, monitored: true };
+        const result = isRadarr ? await updateMovie(updatedData) : await updateSeries(updatedData);
+        setLocalItem(result);
+      } catch (e) {
+        console.error('Failed to monitor', e);
+        alert('Failed to monitor state.');
+      } finally {
+        setIsTogglingMonitor(false);
+      }
     }
   };
 
@@ -88,17 +109,38 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   };
 
   const handleToggleSeasonMonitor = async (seasonNum) => {
-    try {
-      const updatedData = { ...item };
-      const seasonIndex = updatedData.seasons.findIndex(s => s.seasonNumber === seasonNum);
-      if (seasonIndex !== -1) {
-        updatedData.seasons[seasonIndex].monitored = !updatedData.seasons[seasonIndex].monitored;
+    const seasonIndex = item.seasons.findIndex(s => s.seasonNumber === seasonNum);
+    if (seasonIndex === -1) return;
+    const isCurrentlyMonitored = item.seasons[seasonIndex].monitored;
+
+    if (isCurrentlyMonitored) {
+      setUnmonitorTarget({
+        type: 'season',
+        title: `${item.title} - ${seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}`,
+        action: async () => {
+          try {
+            const updatedData = { ...item };
+            updatedData.seasons[seasonIndex].monitored = false;
+            const result = await updateSeries(updatedData);
+            setLocalItem(result);
+          } catch (e) {
+            console.error("Failed to unmonitor season", e);
+            alert("Failed to unmonitor season. " + e.message);
+          } finally {
+            setUnmonitorTarget(null);
+          }
+        }
+      });
+    } else {
+      try {
+        const updatedData = { ...item };
+        updatedData.seasons[seasonIndex].monitored = true;
         const result = await updateSeries(updatedData);
         setLocalItem(result);
+      } catch (e) {
+        console.error("Failed to monitor season", e);
+        alert("Failed to monitor season. " + e.message);
       }
-    } catch (e) {
-      console.error("Failed to toggle season monitor", e);
-      alert("Failed to toggle season monitor. " + e.message);
     }
   };
 
@@ -819,7 +861,27 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
         </div>
       )}
 
-      {/* Settings Modal */}
+      
+      {/* Unmonitor Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={!!unmonitorTarget}
+        onClose={() => setUnmonitorTarget(null)}
+        onConfirm={() => unmonitorTarget?.action()}
+        title="Confirm Unmonitor"
+        message={
+          <>
+            Are you sure you want to unmonitor <strong>{unmonitorTarget?.title}</strong>?
+            <br /><br />
+            It will no longer be searched for and will be removed from your Missing list.
+          </>
+        }
+        confirmText="Unmonitor"
+        isDanger={true}
+        isProcessing={isTogglingMonitor}
+      />
+
+      {/* Settings Modal */} 
+
       <EditMediaSettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
