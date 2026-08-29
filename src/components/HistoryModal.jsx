@@ -3,6 +3,8 @@ import { X, Loader2, Download, AlertCircle, CheckCircle, FileText } from 'lucide
 import { getMovieHistory } from '../radarrApi';
 import { getEpisodeHistory, getSeriesHistory } from '../sonarrApi';
 
+import Modal from './Modal';
+
 const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumber, title }) => {
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,61 +60,68 @@ const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumbe
   };
 
   return (
-    <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ zIndex: 10000 }}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div className="modal-header">
-          <h2>History {title ? `- ${title}` : ''}</h2>
-          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
-            <X size={24} />
-          </button>
-        </div>
-        <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '16px' }}>
-          {isLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-              <Loader2 size={32} className="spinner" color="var(--accent-blue)" />
-            </div>
-          ) : error ? (
-            <div style={{ color: 'var(--danger)', textAlign: 'center', padding: '20px' }}>
-              {error}
-            </div>
-          ) : history.length === 0 ? (
-            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
-              No history found for this item.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {history.map((record, index) => (
-                <div key={record.id || index} style={{ display: 'flex', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                  <div style={{ paddingTop: '2px' }}>
-                    {getEventIcon(record.eventType)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: '600', fontSize: '15px' }}>
-                        {getEventName(record.eventType)}
-                      </span>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', marginLeft: '12px' }}>
-                        {new Date(record.date).toLocaleString()}
-                      </span>
+    <Modal>
+      <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ zIndex: 10000 }}>
+        <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-header">
+            <h2>History {title ? `- ${title}` : ''}</h2>
+            <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+              <X size={24} />
+            </button>
+          </div>
+          <div className="modal-body" style={{ overflowY: 'auto', flex: 1, padding: '16px' }}>
+            {isLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                <Loader2 size={32} className="spinner" color="var(--accent-blue)" />
+              </div>
+            ) : error ? (
+              <div style={{ color: 'var(--danger)', textAlign: 'center', padding: '20px' }}>
+                {error}
+              </div>
+            ) : history.length === 0 ? (
+              <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>
+                No history found for this item.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {history.map((record, index) => (
+                  <div key={record.id || index} style={{ display: 'flex', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <div style={{ paddingTop: '2px' }}>
+                      {getEventIcon(record.eventType)}
                     </div>
-                    {record.sourceTitle && (
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
-                        {record.sourceTitle}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: '600', fontSize: '15px' }}>
+                          {getEventName(record.eventType)}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', marginLeft: '12px' }}>
+                          {new Date(record.date).toLocaleString()}
+                        </span>
                       </div>
-                    )}
-                    {record.data && record.data.message && (
-                      <div style={{ fontSize: '13px', color: 'var(--danger)', marginTop: '4px' }}>
-                        {record.data.message}
-                      </div>
-                    )}
+                      {record.sourceTitle && (
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
+                          {record.sourceTitle}
+                        </div>
+                      )}
+                      {record.data && record.data.indexer && (
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: '500' }}>
+                          Indexer: <span style={{ color: 'var(--text-primary)' }}>{record.data.indexer}</span>
+                        </div>
+                      )}
+                      {record.data && record.data.message && (
+                        <div style={{ fontSize: '13px', color: 'var(--danger)', marginTop: '4px' }}>
+                          {record.data.message}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

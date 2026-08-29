@@ -226,6 +226,13 @@ export const deleteSeries = async (seriesId, deleteFiles = true) => {
   return res.ok;
 };
 
+export const deleteEpisodeFile = async (episodeFileId) => {
+  const res = await fetch(`/sonarr/api/v3/episodefile/${episodeFileId}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+
 export const updateSeries = async (seriesData) => {
   const res = await fetch(`/sonarr/api/v3/series/${seriesData.id}`, {
     method: 'PUT',

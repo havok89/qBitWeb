@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Edit2, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
-import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue } from '../sonarrApi';
-import { searchMovie, updateMovie, getMovieQualityProfiles, getMovieQueue } from '../radarrApi';
+import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue, deleteEpisodeFile } from '../sonarrApi';
+import { searchMovie, updateMovie, getMovieQualityProfiles, getMovieQueue, deleteMovieFile } from '../radarrApi';
 import { useCommand } from '../CommandContext';
 import InteractiveSearchModal from './InteractiveSearchModal';
 import HistoryModal from './HistoryModal';
+import Modal from './Modal';
 import LazyImage from './LazyImage';
 
 const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
@@ -17,6 +18,15 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(!isRadarr);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Episode Details Modal State
+  const [selectedEpisodeForDetails, setSelectedEpisodeForDetails] = useState(null);
+  const [isDeletingEpisodeFile, setIsDeletingEpisodeFile] = useState(false);
+  const [showEpisodeDeleteConfirm, setShowEpisodeDeleteConfirm] = useState(false);
+  
+  // Movie File Delete State
+  const [isDeletingMovieFile, setIsDeletingMovieFile] = useState(false);
+  const [showMovieDeleteConfirm, setShowMovieDeleteConfirm] = useState(false);
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
@@ -522,6 +532,89 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                   </button>
                 </div>
               </div>
+
+              {item.hasFile && item.movieFile && (
+                <div style={{ marginTop: '8px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary)' }}>File Information</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginTop: '4px' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Resolution:</strong> {item.movieFile.mediaInfo?.resolution || 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Video:</strong> {item.movieFile.mediaInfo?.videoCodec || 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Audio:</strong> {item.movieFile.mediaInfo?.audioCodec ? `${item.movieFile.mediaInfo.audioCodec} ${item.movieFile.mediaInfo.audioChannels ? `(${item.movieFile.mediaInfo.audioChannels})` : ''}` : 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Language:</strong> {item.movieFile.languages?.[0]?.name || item.movieFile.mediaInfo?.audioLanguages || 'Unknown'}
+                    </div>
+                    {item.movieFile.mediaInfo?.runTime && (
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Runtime:</strong> {item.movieFile.mediaInfo.runTime}
+                      </div>
+                    )}
+                    {item.movieFile.releaseGroup && (
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Group:</strong> {item.movieFile.releaseGroup}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Size:</strong> {item.movieFile.size ? (item.movieFile.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB' : 'Unknown'}
+                    </div>
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Added:</strong> {item.movieFile.dateAdded ? new Date(item.movieFile.dateAdded).toLocaleDateString() : 'Unknown'}
+                    </div>
+                  </div>
+                  {item.movieFile.mediaInfo?.subtitles && (
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                      <strong>Subtitles:</strong> <span style={{ wordBreak: 'break-word', display: 'inline-block' }}>{item.movieFile.mediaInfo.subtitles}</span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <strong>Path:</strong> <span style={{ wordBreak: 'break-all' }}>{item.movieFile.relativePath}</span>
+                  </div>
+                  
+                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                    {!showMovieDeleteConfirm ? (
+                      <button 
+                        className="btn media-action-btn" 
+                        onClick={() => setShowMovieDeleteConfirm(true)}
+                        style={{ background: 'var(--danger)', color: '#fff', border: 'none', padding: '8px', borderRadius: '8px' }}
+                        title="Delete File"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 69, 58, 0.1)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255, 69, 58, 0.2)' }}>
+                        <span style={{ fontSize: '14px', color: 'var(--danger)' }}>Are you sure?</span>
+                        <button className="btn btn-secondary" onClick={() => setShowMovieDeleteConfirm(false)} style={{ padding: '4px 8px', fontSize: '13px' }}>Cancel</button>
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={async () => {
+                            setIsDeletingMovieFile(true);
+                            try {
+                              await deleteMovieFile(item.movieFile.id);
+                              
+                              // Update local state to remove file
+                              setLocalItem(prev => ({ ...prev, hasFile: false, movieFile: undefined }));
+                              setShowMovieDeleteConfirm(false);
+                            } catch (e) {
+                              alert('Failed to delete movie file.');
+                            } finally {
+                              setIsDeletingMovieFile(false);
+                            }
+                          }}
+                          disabled={isDeletingMovieFile}
+                          style={{ background: 'var(--danger)', padding: '4px 8px', fontSize: '13px' }}
+                        >
+                          {isDeletingMovieFile ? 'Deleting...' : 'Confirm'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()
@@ -683,7 +776,11 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                         const isLast = idx === arr.length - 1;
                         
                         return (
-                          <div key={ep.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)' }}>
+                          <div 
+                            key={ep.id} 
+                            onClick={() => setSelectedEpisodeForDetails(ep)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                          >
                             <div style={{ width: '32px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '15px' }}>
                               {ep.episodeNumber}
                             </div>
@@ -712,21 +809,21 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <button 
                                 className="icon-btn" 
-                                onClick={() => setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` })} 
+                                onClick={(e) => { e.stopPropagation(); setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` }); }} 
                                 title="Episode History"
                               >
                                 <Clock size={16} />
                               </button>
                               <button 
                                 className="icon-btn" 
-                                onClick={() => handleEpisodeInteractiveSearch(ep, seasonNum)} 
+                                onClick={(e) => { e.stopPropagation(); handleEpisodeInteractiveSearch(ep, seasonNum); }} 
                                 title="Interactive Search"
                               >
                                 <List size={16} />
                               </button>
                               <button 
                                 className={`icon-btn ${epIsSuccess ? 'primary' : ''}`} 
-                                onClick={() => handleEpisodeSearch(ep.id)} 
+                                onClick={(e) => { e.stopPropagation(); handleEpisodeSearch(ep.id); }} 
                                 title="Auto Search"
                                 disabled={epIsSearching}
                               >
@@ -747,123 +844,244 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
-            <div className="modal-header">
-              <h2>Edit Media</h2>
-              <button className="icon-btn" onClick={() => setShowSettings(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-secondary)' }}>
-                  Quality Profile
-                </label>
-                {qualityProfiles.length === 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-                    <Loader2 size={16} className="spinner" /> Loading profiles...
-                  </div>
-                ) : (
-                  <select 
-                    className="form-input" 
-                    value={selectedQualityProfile}
-                    onChange={(e) => setSelectedQualityProfile(e.target.value)}
-                    style={{ width: '100%', padding: '12px', background: '#222', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontSize: '15px', cursor: 'pointer' }}
-                  >
-                    {qualityProfiles.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                )}
+        <Modal>
+          <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', width: '90%' }}>
+              <div className="modal-header">
+                <h2>Edit Media</h2>
+                <button className="icon-btn" onClick={() => setShowSettings(false)}>
+                  <X size={20} />
+                </button>
               </div>
-
-              {!isRadarr && (
-                <>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-secondary)' }}>
-                      Series Type
-                    </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                    Quality Profile
+                  </label>
+                  {qualityProfiles.length === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                      <Loader2 size={16} className="spinner" /> Loading profiles...
+                    </div>
+                  ) : (
                     <select 
                       className="form-input" 
-                      value={selectedSeriesType} 
-                      onChange={(e) => setSelectedSeriesType(e.target.value)}
+                      value={selectedQualityProfile}
+                      onChange={(e) => setSelectedQualityProfile(e.target.value)}
                       style={{ width: '100%', padding: '12px', background: '#222', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontSize: '15px', cursor: 'pointer' }}
                     >
-                      <option value="standard">Standard</option>
-                      <option value="daily">Daily</option>
-                      <option value="anime">Anime</option>
+                      {qualityProfiles.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
                     </select>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
-                    <input 
-                      type="checkbox" 
-                      id="edit-monitored"
-                      checked={selectedMonitored} 
-                      onChange={(e) => setSelectedMonitored(e.target.checked)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
-                    />
-                    <label htmlFor="edit-monitored" style={{ cursor: 'pointer', fontWeight: '500' }}>
-                      Monitored
-                    </label>
-                  </div>
+                  )}
+                </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
-                    <input 
-                      type="checkbox" 
-                      id="edit-season-folder"
-                      checked={selectedSeasonFolder} 
-                      onChange={(e) => setSelectedSeasonFolder(e.target.checked)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
-                    />
-                    <label htmlFor="edit-season-folder" style={{ cursor: 'pointer', fontWeight: '500' }}>
-                      Use Season Folders
-                    </label>
-                  </div>
-                </>
-              )}
-              
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <button className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cancel</button>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={handleSaveSettings}
-                  disabled={isSavingSettings || qualityProfiles.length === 0}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  {isSavingSettings && <Loader2 size={16} className="spinner" />}
-                  Save Changes
-                </button>
+                {!isRadarr && (
+                  <>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                        Series Type
+                      </label>
+                      <select 
+                        className="form-input" 
+                        value={selectedSeriesType} 
+                        onChange={(e) => setSelectedSeriesType(e.target.value)}
+                        style={{ width: '100%', padding: '12px', background: '#222', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontSize: '15px', cursor: 'pointer' }}
+                      >
+                        <option value="standard">Standard</option>
+                        <option value="daily">Daily</option>
+                        <option value="anime">Anime</option>
+                      </select>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                      <input 
+                        type="checkbox" 
+                        id="edit-monitored"
+                        checked={selectedMonitored} 
+                        onChange={(e) => setSelectedMonitored(e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                      />
+                      <label htmlFor="edit-monitored" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                        Monitored
+                      </label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                      <input 
+                        type="checkbox" 
+                        id="edit-season-folder"
+                        checked={selectedSeasonFolder} 
+                        onChange={(e) => setSelectedSeasonFolder(e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                      />
+                      <label htmlFor="edit-season-folder" style={{ cursor: 'pointer', fontWeight: '500' }}>
+                        Use Season Folders
+                      </label>
+                    </div>
+                  </>
+                )}
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                  <button className="btn btn-secondary" onClick={() => setShowSettings(false)}>Cancel</button>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings || qualityProfiles.length === 0}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    {isSavingSettings && <Loader2 size={16} className="spinner" />}
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h2>Confirm Deletion</h2>
-            </div>
-            <div className="modal-body" style={{ color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '24px' }}>
-              Are you sure you want to delete <strong>{item.title}</strong> from your library?
-              <br /><br />
-              This will also permanently delete all associated files from your disk. This action cannot be undone.
-            </div>
-            <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
-                Cancel
-              </button>
-              <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {isDeleting && <Loader2 size={16} className="spinner" />}
-                Delete Media
-              </button>
+        <Modal>
+          <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+              <div className="modal-header">
+                <h2>Confirm Deletion</h2>
+              </div>
+              <div className="modal-body" style={{ color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '24px' }}>
+                Are you sure you want to delete <strong>{item.title}</strong> from your library?
+                <br /><br />
+                This will also permanently delete all associated files from your disk. This action cannot be undone.
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>
+                  Cancel
+                </button>
+                <button className="btn btn-danger" onClick={handleDelete} disabled={isDeleting} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {isDeleting && <Loader2 size={16} className="spinner" />}
+                  Delete Media
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Modal>
+      )}
+
+      {/* Episode Details Modal */}
+      {selectedEpisodeForDetails && (
+        <Modal>
+          <div className="modal-overlay" onClick={() => { setSelectedEpisodeForDetails(null); setShowEpisodeDeleteConfirm(false); }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', width: '90%' }}>
+              <div className="modal-header">
+                <h2>{item.title} - S{String(selectedEpisodeForDetails.seasonNumber).padStart(2, '0')}E{String(selectedEpisodeForDetails.episodeNumber).padStart(2, '0')}</h2>
+                <button className="icon-btn" onClick={() => { setSelectedEpisodeForDetails(null); setShowEpisodeDeleteConfirm(false); }}>
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ fontWeight: '500', fontSize: '18px' }}>
+                  {selectedEpisodeForDetails.title}
+                </div>
+                <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  {selectedEpisodeForDetails.overview || 'No synopsis available.'}
+                </div>
+                
+                {selectedEpisodeForDetails.episodeFile ? (
+                  <div style={{ background: '#1a1a1a', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>File Information</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px 16px', marginTop: '4px' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Resolution:</strong> {selectedEpisodeForDetails.episodeFile.mediaInfo?.resolution || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Video:</strong> {selectedEpisodeForDetails.episodeFile.mediaInfo?.videoCodec || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Audio:</strong> {selectedEpisodeForDetails.episodeFile.mediaInfo?.audioCodec ? `${selectedEpisodeForDetails.episodeFile.mediaInfo.audioCodec} ${selectedEpisodeForDetails.episodeFile.mediaInfo.audioChannels ? `(${selectedEpisodeForDetails.episodeFile.mediaInfo.audioChannels})` : ''}` : 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Language:</strong> {selectedEpisodeForDetails.episodeFile.languages?.[0]?.name || selectedEpisodeForDetails.episodeFile.mediaInfo?.audioLanguages || 'Unknown'}
+                      </div>
+                      {selectedEpisodeForDetails.episodeFile.mediaInfo?.runTime && (
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                          <strong>Runtime:</strong> {selectedEpisodeForDetails.episodeFile.mediaInfo.runTime}
+                        </div>
+                      )}
+                      {selectedEpisodeForDetails.episodeFile.releaseGroup && (
+                        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                          <strong>Group:</strong> {selectedEpisodeForDetails.episodeFile.releaseGroup}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Size:</strong> {selectedEpisodeForDetails.episodeFile.size ? (selectedEpisodeForDetails.episodeFile.size / (1024 * 1024)).toFixed(2) + ' MB' : 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Added:</strong> {selectedEpisodeForDetails.episodeFile.dateAdded ? new Date(selectedEpisodeForDetails.episodeFile.dateAdded).toLocaleDateString() : 'Unknown'}
+                      </div>
+                    </div>
+                    {selectedEpisodeForDetails.episodeFile.mediaInfo?.subtitles && (
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <strong>Subtitles:</strong> <span style={{ wordBreak: 'break-word', display: 'inline-block' }}>{selectedEpisodeForDetails.episodeFile.mediaInfo.subtitles}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      <strong>Path:</strong> <span style={{ wordBreak: 'break-all' }}>{selectedEpisodeForDetails.episodeFile.relativePath}</span>
+                    </div>
+                    
+                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end' }}>
+                      {!showEpisodeDeleteConfirm ? (
+                        <button 
+                          className="btn media-action-btn" 
+                          onClick={() => setShowEpisodeDeleteConfirm(true)}
+                          style={{ background: 'var(--danger)', color: '#fff', border: 'none', padding: '8px', borderRadius: '8px' }}
+                          title="Delete File"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 69, 58, 0.1)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(255, 69, 58, 0.2)' }}>
+                          <span style={{ fontSize: '14px', color: 'var(--danger)' }}>Are you sure?</span>
+                          <button className="btn btn-secondary" onClick={() => setShowEpisodeDeleteConfirm(false)} style={{ padding: '4px 8px', fontSize: '13px' }}>Cancel</button>
+                          <button 
+                            className="btn btn-primary" 
+                            onClick={async () => {
+                              setIsDeletingEpisodeFile(true);
+                              try {
+                                await deleteEpisodeFile(selectedEpisodeForDetails.episodeFileId);
+                                
+                                // Update local state to remove file
+                                setEpisodes(prev => prev.map(ep => 
+                                  ep.id === selectedEpisodeForDetails.id 
+                                    ? { ...ep, hasFile: false, episodeFileId: 0, episodeFile: undefined }
+                                    : ep
+                                ));
+                                setSelectedEpisodeForDetails(null);
+                                setShowEpisodeDeleteConfirm(false);
+                              } catch (e) {
+                                alert('Failed to delete episode file.');
+                              } finally {
+                                setIsDeletingEpisodeFile(false);
+                              }
+                            }}
+                            disabled={isDeletingEpisodeFile}
+                            style={{ background: 'var(--danger)', padding: '4px 8px', fontSize: '13px' }}
+                          >
+                            {isDeletingEpisodeFile ? 'Deleting...' : 'Confirm'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-secondary)', background: '#1a1a1a', borderRadius: '8px' }}>
+                    No file currently exists for this episode.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Interactive Search Modal */}

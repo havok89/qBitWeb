@@ -178,6 +178,13 @@ export const deleteMovie = async (movieId, deleteFiles = true) => {
   return res.ok;
 };
 
+export const deleteMovieFile = async (movieFileId) => {
+  const res = await fetch(`/radarr/api/v3/moviefile/${movieFileId}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+
 export const updateMovie = async (movieData) => {
   const res = await fetch(`/radarr/api/v3/movie/${movieData.id}`, {
     method: 'PUT',
