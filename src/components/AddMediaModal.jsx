@@ -3,9 +3,10 @@ import { Search, Loader2, X, Image as ImageIcon, Film, Tv, ArrowLeft } from 'luc
 import { lookupMovie, getMovieQualityProfiles, getMovieRootFolders, addMovie } from '../radarrApi';
 import { lookupSeries, getSeriesQualityProfiles, getSeriesRootFolders, addSeries } from '../sonarrApi';
 
-const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true, radarrAvailable = true }) => {
+const AddMediaModal = ({ onClose, onAdded, initialSearchTerm = '', initialMode = 'movie', sonarrAvailable = true, radarrAvailable = true }) => {
   const [mode, setMode] = useState(initialMode); // 'movie' or 'series'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState([]);
   
@@ -57,6 +58,7 @@ const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true,
     if (!searchTerm.trim()) return;
     
     setIsSearching(true);
+    setHasSearched(true);
     setSelectedItem(null);
     setAddStatus('idle');
     setAddError(null);
@@ -108,6 +110,7 @@ const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true,
       }
       setAddStatus('success');
       setTimeout(() => {
+        if (onAdded) onAdded();
         onClose();
       }, 1000);
     } catch (err) {
@@ -126,14 +129,14 @@ const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true,
           <button 
             className={`btn ${mode === 'movie' ? 'btn-primary' : 'btn-secondary'}`} 
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            onClick={() => { setMode('movie'); setResults([]); setSelectedItem(null); }}
+            onClick={() => { setMode('movie'); setResults([]); setSelectedItem(null); setHasSearched(false); }}
           >
             <Film size={18} /> Movie
           </button>
           <button 
             className={`btn ${mode === 'series' ? 'btn-primary' : 'btn-secondary'}`} 
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            onClick={() => { setMode('series'); setResults([]); setSelectedItem(null); }}
+            onClick={() => { setMode('series'); setResults([]); setSelectedItem(null); setHasSearched(false); }}
           >
             <Tv size={18} /> TV Show
           </button>
@@ -144,7 +147,11 @@ const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true,
         <input 
           type="text" 
           value={searchTerm} 
-          onChange={(e) => setSearchTerm(e.target.value)} 
+          autoFocus
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setHasSearched(false);
+          }} 
           placeholder={`Search for a ${mode === 'movie' ? 'movie' : 'TV show'}...`}
           style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #333', background: '#222', color: '#fff' }}
         />
@@ -186,8 +193,10 @@ const AddMediaModal = ({ onClose, initialMode = 'movie', sonarrAvailable = true,
             </div>
           );
         })}
-        {results.length === 0 && !isSearching && searchTerm && (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>No results found.</div>
+        {results.length === 0 && !isSearching && (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)' }}>
+            {hasSearched ? 'No results found.' : (searchTerm ? 'Press enter or click the search icon to search.' : 'Type a title to start searching.')}
+          </div>
         )}
       </div>
 

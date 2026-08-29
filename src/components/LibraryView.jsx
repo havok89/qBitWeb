@@ -4,7 +4,7 @@ import { getAllMovies, getMovieQueue } from '../radarrApi';
 import { getAllSeries, getQueue } from '../sonarrApi';
 import MediaCard from './MediaCard';
 
-const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, radarrAvailable = true }) => {
+const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, radarrAvailable = true, refreshTrigger, onAddMissingItem }) => {
   const [library, setLibrary] = useState([]);
   const [queueStatusMap, setQueueStatusMap] = useState(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +66,7 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
     };
     
     fetchLibrary();
-  }, [sonarrAvailable, radarrAvailable]);
+  }, [sonarrAvailable, radarrAvailable, refreshTrigger]);
 
   const filteredLibrary = library.filter(item => 
     (item.title || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -99,7 +99,17 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
         </div>
       ) : filteredLibrary.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-          {searchTerm ? 'No media found matching your search.' : 'Your library is empty.'}
+          <div style={{ marginBottom: searchTerm ? '16px' : '0' }}>
+            {searchTerm ? 'No media found matching your search.' : 'Your library is empty.'}
+          </div>
+          {searchTerm && onAddMissingItem && (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => onAddMissingItem(searchTerm)}
+            >
+              Add "{searchTerm}" to Library
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

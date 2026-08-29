@@ -20,6 +20,8 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddMediaModal, setShowAddMediaModal] = useState(false);
+  const [initialSearchTerm, setInitialSearchTerm] = useState('');
+  const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(0);
   const [addUrls, setAddUrls] = useState('');
   const [addFiles, setAddFiles] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -314,6 +316,11 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
               isDownloading={false} 
               sonarrAvailable={sonarrAvailable}
               radarrAvailable={radarrAvailable}
+              refreshTrigger={libraryRefreshTrigger}
+              onAddMissingItem={(term) => {
+                setInitialSearchTerm(term);
+                setShowAddMediaModal(true);
+              }}
             />
           } />
           
@@ -546,7 +553,14 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
       {/* Add Media Modal */}
       {showAddMediaModal && (
         <AddMediaModal 
-          onClose={() => setShowAddMediaModal(false)} 
+          onClose={() => {
+            setShowAddMediaModal(false);
+            setInitialSearchTerm('');
+          }} 
+          onAdded={() => {
+            setLibraryRefreshTrigger(prev => prev + 1);
+          }}
+          initialSearchTerm={initialSearchTerm}
           initialMode={radarrAvailable && !sonarrAvailable ? 'movie' : 'series'} 
           sonarrAvailable={sonarrAvailable}
           radarrAvailable={radarrAvailable}
