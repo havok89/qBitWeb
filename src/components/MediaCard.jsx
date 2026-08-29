@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, EyeOff, ChevronRight } from 'lucide-react';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, Eye, EyeOff, ChevronRight } from 'lucide-react';
 import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
 import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
 import { useCommand } from '../CommandContext';
@@ -313,13 +313,18 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
         <div className="action-buttons">
           {isRadarr && !hideUnmonitor && !hideSearch && (
             <button 
-              className="icon-btn danger" 
-              onClick={(e) => { e.stopPropagation(); setShowConfirmUnmonitor(true); }} 
-              title="Unmonitor (Remove from missing)"
-              disabled={isUnmonitoring || item.hasFile || isDownloading}
-              style={(item.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              className="icon-btn" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (item.monitored !== false) {
+                  setShowConfirmUnmonitor(true); 
+                }
+              }} 
+              title={item.monitored !== false ? "Unmonitor (Remove from missing)" : "Unmonitored"}
+              disabled={isUnmonitoring || item.hasFile || isDownloading || item.monitored === false}
+              style={(item.hasFile || isDownloading || item.monitored === false) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
-              {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : <EyeOff size={18} />}
+              {isUnmonitoring ? <Loader2 size={18} className="spinner" /> : (item.monitored !== false ? <Eye size={18} color="var(--accent-blue)" /> : <EyeOff size={18} color="var(--text-secondary)" />)}
             </button>
           )}
           {!hideHistory && (
