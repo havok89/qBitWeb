@@ -783,14 +783,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 </div>
                               )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <button 
-                                className="icon-btn" 
-                                onClick={(e) => { e.stopPropagation(); handleToggleEpisodeMonitor(ep); }}
-                                title={ep.monitored ? "Unmonitor Episode" : "Monitor Episode"}
-                              >
-                                {ep.monitored ? <Eye size={16} color="var(--accent-blue)" /> : <EyeOff size={16} color="var(--text-secondary)" />}
-                              </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <button 
                                 className="icon-btn" 
                                 onClick={(e) => { e.stopPropagation(); setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` }); }} 

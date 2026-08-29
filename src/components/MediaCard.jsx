@@ -311,7 +311,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
         </div>
 
         <div className="action-buttons">
-          {!hideUnmonitor && !hideSearch && (
+          {isRadarr && !hideUnmonitor && !hideSearch && (
             <button 
               className="icon-btn danger" 
               onClick={(e) => { e.stopPropagation(); setShowConfirmUnmonitor(true); }} 
