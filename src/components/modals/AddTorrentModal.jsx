@@ -54,6 +54,16 @@ const AddTorrentModal = ({ isOpen, onClose, categories, onAdd }) => {
                 onChange={(e) => setAddUrls(e.target.value)}
                 placeholder="magnet:?xt=urn:btih:..."
                 rows="4"
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #333',
+                  background: '#222',
+                  color: '#fff',
+                  width: '100%',
+                  fontFamily: 'monospace',
+                  resize: 'vertical'
+                }}
               />
             </div>
             
@@ -64,14 +74,34 @@ const AddTorrentModal = ({ isOpen, onClose, categories, onAdd }) => {
                 multiple 
                 accept=".torrent"
                 onChange={(e) => setAddFiles(e.target.files)}
-                style={{ padding: '8px 0' }}
+                style={{
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px dashed #555',
+                  background: '#222',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
               />
             </div>
 
             <div className="input-group">
               <label>Category (Optional)</label>
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                <option value="">-- None --</option>
+              <select 
+                value={selectedCategory} 
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #333',
+                  background: '#222',
+                  color: '#fff',
+                  width: '100%',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">None</option>
                 {categories.map(c => (
                   <option key={c.name} value={c.name}>{c.name}</option>
                 ))}
