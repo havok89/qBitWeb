@@ -28,6 +28,7 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   // Radarr Movie File Delete
   const [isDeletingMovieFile, setIsDeletingMovieFile] = useState(false);
   const [showMovieDeleteConfirm, setShowMovieDeleteConfirm] = useState(false);
+  const [unmonitorTarget, setUnmonitorTarget] = useState(null);
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
