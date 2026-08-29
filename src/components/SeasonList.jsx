@@ -36,7 +36,7 @@ const SeasonList = ({
   }, [item.id]);
 
   const toggleSeasonCollapse = (seasonNum) => {
-    setCollapsedSeasons(prev => ({
+    setExpandedSeasons(prev => ({
       ...prev,
       [seasonNum]: !prev[seasonNum]
     }));
