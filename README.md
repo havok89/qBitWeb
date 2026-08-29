@@ -72,6 +72,7 @@ docker run -d \
   --restart unless-stopped \
   -p 3000:80 \
   -v /path/to/your/data:/app/data \
+  -e AUTH_PASSWORD=your_secure_password_here \
   -e QBITTORRENT_URL=http://192.168.1.100:8080 \
   -e QBITTORRENT_USERNAME=admin \
   -e QBITTORRENT_PASSWORD=adminadmin \
@@ -82,6 +83,8 @@ docker run -d \
   ghcr.io/havok89/qbitweb:latest
 ```
 Access the UI at `http://localhost:3000`.
+
+*Note: Setting `AUTH_PASSWORD` enables the login screen and WebAuthn (Passkeys) functionality. If omitted, the app will bypass authentication entirely.*
 
 **Updating your Docker container:**
 When a new release is out, simply pull the latest image and recreate your container:
