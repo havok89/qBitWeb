@@ -23,6 +23,12 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   
   // Episode Details Modal State
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(item.id, isRadarr);
+    setIsDeleting(false);
+  };
+
   // Radarr Movie File Delete
   const [isDeletingMovieFile, setIsDeletingMovieFile] = useState(false);
   const [showMovieDeleteConfirm, setShowMovieDeleteConfirm] = useState(false);
