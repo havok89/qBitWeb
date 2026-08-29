@@ -1,16 +1,8 @@
+import { formatBytes } from '../../utils';
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Loader2, Folder, File as FileIcon, Search, ChevronRight, ChevronDown, CheckSquare, Square as SquareIcon, MinusSquare } from 'lucide-react';
 import Modal from './Modal';
 import { getTorrentFiles, setFilePriority } from '../../api';
-
-const formatBytes = (bytes, decimals = 1) => {
-  if (!+bytes) return '0 B';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-};
 
 const buildFileTree = (files) => {
   const root = { name: 'root', type: 'directory', path: '', children: {}, isRoot: true };

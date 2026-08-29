@@ -1,18 +1,10 @@
+import { formatBytes } from '../utils';
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Tag, Play, Square, Trash2, Download, Upload, Loader2, Settings } from 'lucide-react';
 import { pauseTorrent, resumeTorrent, deleteTorrent } from '../api';
 import ConfirmModal from './modals/ConfirmModal';
 import TorrentFilesModal from './modals/TorrentFilesModal';
-
-const formatBytes = (bytes, decimals = 1) => {
-  if (!+bytes) return '0 B';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-};
 
 const formatStatus = (state) => {
   const map = {
