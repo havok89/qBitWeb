@@ -14,7 +14,7 @@ const SeasonList = ({
 }) => {
   const [episodes, setEpisodes] = useState([]);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(true);
-  const [collapsedSeasons, setCollapsedSeasons] = useState({});
+  const [expandedSeasons, setExpandedSeasons] = useState({});
   const [selectedEpisodeForDetails, setSelectedEpisodeForDetails] = useState(null);
 
   const { searchStatuses, trackCommand } = useCommand();
@@ -182,10 +182,10 @@ const SeasonList = ({
             <div key={seasonNum} className="modern-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 0, background: 'rgba(20,20,20,0.85)' }}>
               <div 
                 onClick={() => toggleSeasonCollapse(seasonNum)}
-                style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderBottom: collapsedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.05)', borderBottom: !expandedSeasons[seasonNum] ? 'none' : '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {collapsedSeasons[seasonNum] ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
+                  {!expandedSeasons[seasonNum] ? <ChevronRight size={20} /> : <ChevronDown size={20} />}
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: '600', fontSize: '18px' }}>
                       {seasonNum === 0 ? 'Specials' : `Season ${seasonNum}`}
@@ -228,7 +228,7 @@ const SeasonList = ({
               </div>
               <div style={{ 
                 display: 'grid', 
-                gridTemplateRows: collapsedSeasons[seasonNum] ? '0fr' : '1fr', 
+                gridTemplateRows: !expandedSeasons[seasonNum] ? '0fr' : '1fr', 
                 transition: 'grid-template-rows 0.3s ease-in-out' 
               }}>
                 <div style={{ overflow: 'hidden', minHeight: 0 }}>
