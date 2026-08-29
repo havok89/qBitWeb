@@ -130,15 +130,6 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
     }
   }
 
-  // Group episodes by season
-  const seasons = episodes.reduce((acc, ep) => {
-    if (!acc[ep.seasonNumber]) acc[ep.seasonNumber] = [];
-    acc[ep.seasonNumber].push(ep);
-    return acc;
-  }, {});
-
-  const sortedSeasons = Object.keys(seasons).map(Number).sort((a, b) => b - a); // Newest season first
-
   return (
     <div className="media-details-container" style={{ color: '#fff', position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
       
