@@ -8,7 +8,7 @@ import InteractiveSearchModal from './modals/InteractiveSearchModal';
 import HistoryModal from './modals/HistoryModal';
 import LazyImage from './LazyImage';
 
-const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }) => {
+const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
   const { searchStatuses, trackCommand } = useCommand();
   const trackingKey = isRadarr ? `radarr-movie-${item.id}` : (item.series ? `sonarr-episode-${item.id}` : `sonarr-series-${item.id}`);
@@ -311,7 +311,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
         </div>
 
         <div className="action-buttons">
-          {!hideSearch && (
+          {!hideUnmonitor && !hideSearch && (
             <button 
               className="icon-btn danger" 
               onClick={(e) => { e.stopPropagation(); setShowConfirmUnmonitor(true); }} 
@@ -346,8 +346,8 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
                 className="icon-btn" 
                 onClick={(e) => { e.stopPropagation(); handleInteractiveSearch(); }} 
                 title="Interactive Search"
-                disabled={item.hasFile || isUnaired}
-                style={(item.hasFile || isUnaired) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                disabled={item.hasFile}
+                style={item.hasFile ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 <List size={18} />
               </button>
@@ -355,8 +355,8 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, onSelectMedia }
                 className={`icon-btn ${searchSuccess ? 'primary' : ''}`} 
                 onClick={(e) => { e.stopPropagation(); handleSearch(); }} 
                 title="Auto Search"
-                disabled={isSearching || item.hasFile || isUnaired || isDownloading}
-                style={(item.hasFile || isUnaired || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                disabled={isSearching || item.hasFile || isDownloading}
+                style={(item.hasFile || isDownloading) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 {isSearching ? <Loader2 size={18} className="spinner" /> : <Search size={18} fill={searchSuccess ? 'currentColor' : 'none'} />}
               </button>

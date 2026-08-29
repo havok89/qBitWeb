@@ -147,6 +147,18 @@ export const unmonitorEpisode = async (episodeId) => {
   return res.ok;
 };
 
+export const monitorEpisode = async (episodeId) => {
+  const res = await fetch('/sonarr/api/v3/episode/monitor', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      episodeIds: [episodeId],
+      monitored: true
+    })
+  });
+  return res.ok;
+};
+
 export const lookupSeries = async (term) => {
   const res = await fetch(`/sonarr/api/v3/series/lookup?term=${encodeURIComponent(term)}`);
   const data = await handleResponse(res);

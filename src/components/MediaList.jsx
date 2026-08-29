@@ -222,7 +222,7 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
                   <MediaCard 
                     item={item} 
                     queueStatus={queueStatusMap.get(`${item._type}-${item.id}`)}
-                    hideSearch={true}
+                    hideSearch={false}
                     hideHistory={true}
                     onSelectMedia={() => onSelectMedia && onSelectMedia(item.series ? { ...item.series, _type: 'sonarr' } : item, item._type === 'radarr')}
                   />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, Search, Loader2, Image as ImageIcon, AlertCircle, CheckCircle2, DownloadCloud, Clock, List, Edit2, Eye, EyeOff, X, ChevronDown, ChevronRight, Star } from 'lucide-react';
-import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue, deleteEpisodeFile } from '../sonarrApi';
+import { getEpisodes, searchEpisode, searchSeason, updateSeries, getSeriesQualityProfiles, getQueue, deleteEpisodeFile, unmonitorEpisode, monitorEpisode } from '../sonarrApi';
 import { searchMovie, updateMovie, getMovieQualityProfiles, getMovieQueue, deleteMovieFile } from '../radarrApi';
 import { useCommand } from '../CommandContext';
 import InteractiveSearchModal from './modals/InteractiveSearchModal';
@@ -54,6 +54,38 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
   }, []);
 
 
+
+
+  const [isTogglingMonitor, setIsTogglingMonitor] = useState(false);
+
+  const handleToggleMonitor = async () => {
+    setIsTogglingMonitor(true);
+    try {
+      const updatedData = { ...item, monitored: !item.monitored };
+      const result = isRadarr ? await updateMovie(updatedData) : await updateSeries(updatedData);
+      setLocalItem(result);
+    } catch (e) {
+      console.error('Failed to toggle monitor', e);
+      alert('Failed to toggle monitor state.');
+    } finally {
+      setIsTogglingMonitor(false);
+    }
+  };
+
+  const handleToggleEpisodeMonitor = async (ep) => {
+    const newMonitored = !ep.monitored;
+    try {
+      if (newMonitored) {
+        await monitorEpisode(ep.id);
+      } else {
+        await unmonitorEpisode(ep.id);
+      }
+      setEpisodes(prev => prev.map(e => e.id === ep.id ? { ...e, monitored: newMonitored } : e));
+    } catch (err) {
+      console.error('Failed to toggle episode monitor', err);
+      alert('Failed to toggle episode monitor.');
+    }
+  };
 
   const handleToggleSeasonMonitor = async (seasonNum) => {
     try {
@@ -484,6 +516,16 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                     <Clock size={16} /> <span className="btn-text">History</span>
                   </button>
                   <button 
+                    className="btn btn-secondary media-action-btn" 
+                    onClick={handleToggleMonitor}
+                    disabled={isTogglingMonitor}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    title={item.monitored ? "Unmonitor" : "Monitor"}
+                  >
+                    {isTogglingMonitor ? <Loader2 size={16} className="spinner" /> : (item.monitored ? <Eye size={16} color="var(--accent-blue)" /> : <EyeOff size={16} />)}
+                    <span className="btn-text">{item.monitored ? 'Monitored' : 'Unmonitored'}</span>
+                  </button>
+                  <button 
                     className={`btn ${movieIsSuccess ? 'btn-primary' : 'btn-secondary'} media-action-btn`} 
                     onClick={handleMovieSearch}
                     disabled={movieIsSearching}
@@ -741,7 +783,14 @@ const MediaDetails = ({ item: initialItem, isRadarr, onBack, onDelete }) => {
                                 </div>
                               )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button 
+                                className="icon-btn" 
+                                onClick={(e) => { e.stopPropagation(); handleToggleEpisodeMonitor(ep); }}
+                                title={ep.monitored ? "Unmonitor Episode" : "Monitor Episode"}
+                              >
+                                {ep.monitored ? <Eye size={16} color="var(--accent-blue)" /> : <EyeOff size={16} color="var(--text-secondary)" />}
+                              </button>
                               <button 
                                 className="icon-btn" 
                                 onClick={(e) => { e.stopPropagation(); setHistoryModalData({ itemId: ep.id, isRadarr: false, title: `${item.title} - S${String(seasonNum).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}` }); }} 
