@@ -275,3 +275,11 @@ export const getSeriesHistory = async (seriesId, seasonNumber = null) => {
   return records;
 };
 
+export const markEpisodeHistoryFailed = async (historyId) => {
+  const res = await fetch(`/sonarr/api/v3/history/failed/${historyId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.ok;
+};
+

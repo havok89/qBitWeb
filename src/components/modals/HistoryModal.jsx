@@ -1,40 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { X, Loader2, Download, AlertCircle, CheckCircle, FileText } from 'lucide-react';
-import { getMovieHistory } from '../../radarrApi';
-import { getEpisodeHistory, getSeriesHistory } from '../../sonarrApi';
-
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Loader2, Download, AlertCircle, CheckCircle, FileText, Ban } from 'lucide-react';
+import { getMovieHistory, markMovieHistoryFailed } from '../../radarrApi';
+import { getEpisodeHistory, getSeriesHistory, markEpisodeHistoryFailed } from '../../sonarrApi';
+import { useToast } from '../../ToastContext';
+import ConfirmModal from './ConfirmModal';
 import Modal from './Modal';
 
 const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumber, title }) => {
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [blocklistTarget, setBlocklistTarget] = useState(null);
+  const [isBlocklisting, setIsBlocklisting] = useState(false);
+  const { addToast } = useToast();
+
+  const fetchHistory = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      let data = [];
+      if (isRadarr) {
+        data = await getMovieHistory(itemId);
+      } else if (isSeries) {
+        data = await getSeriesHistory(itemId, seasonNumber !== undefined ? seasonNumber : null);
+      } else {
+        data = await getEpisodeHistory(itemId);
+      }
+      setHistory(data || []);
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+      setError("Failed to load history.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [itemId, isRadarr, isSeries, seasonNumber]);
 
   useEffect(() => {
     if (!isOpen || !itemId) return;
-    
-    const fetchHistory = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        let data = [];
-        if (isRadarr) {
-          data = await getMovieHistory(itemId);
-        } else if (isSeries) {
-          data = await getSeriesHistory(itemId, seasonNumber !== undefined ? seasonNumber : null);
-        } else {
-          data = await getEpisodeHistory(itemId);
-        }
-        setHistory(data || []);
-      } catch (err) {
-        console.error("Failed to fetch history:", err);
-        setError("Failed to load history.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchHistory();
-  }, [isOpen, itemId, isRadarr]);
+  }, [isOpen, itemId, fetchHistory]);
+
+  const handleConfirmBlocklist = async () => {
+    if (!blocklistTarget) return;
+    setIsBlocklisting(true);
+    try {
+      let success = false;
+      if (isRadarr) {
+        success = await markMovieHistoryFailed(blocklistTarget.id);
+      } else {
+        success = await markEpisodeHistoryFailed(blocklistTarget.id);
+      }
+
+      if (success) {
+        addToast('Release added to blocklist');
+        setBlocklistTarget(null);
+        await fetchHistory();
+      } else {
+        throw new Error('Failed to blocklist release');
+      }
+    } catch (err) {
+      console.error('Error blocklisting release:', err);
+      addToast('Failed to blocklist release');
+    } finally {
+      setIsBlocklisting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -94,9 +124,39 @@ const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumbe
                         <span style={{ fontWeight: '600', fontSize: '15px' }}>
                           {getEventName(record.eventType)}
                         </span>
-                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', marginLeft: '12px' }}>
-                          {new Date(record.date).toLocaleString()}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+                          {record.eventType === 'grabbed' && (
+                            <button
+                              type="button"
+                              className="icon-btn danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBlocklistTarget(record);
+                              }}
+                              title="Blocklist release (mark as failed)"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                color: 'var(--danger)',
+                                background: 'rgba(255, 69, 58, 0.12)',
+                                border: '1px solid rgba(255, 69, 58, 0.3)',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <Ban size={13} />
+                              <span>Blocklist</span>
+                            </button>
+                          )}
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                            {new Date(record.date).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                       {record.sourceTitle && (
                         <div style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
@@ -121,6 +181,33 @@ const HistoryModal = ({ isOpen, onClose, itemId, isRadarr, isSeries, seasonNumbe
           </div>
         </div>
       </div>
+      {blocklistTarget && (
+        <ConfirmModal
+          isOpen={Boolean(blocklistTarget)}
+          onClose={() => setBlocklistTarget(null)}
+          onConfirm={handleConfirmBlocklist}
+          title="Blocklist Release"
+          message={`Are you sure you want to mark this release as failed? It will be added to the blocklist in ${isRadarr ? 'Radarr' : 'Sonarr'} and will not be automatically downloaded again.`}
+          confirmText="Blocklist Release"
+          isDanger={true}
+          isProcessing={isBlocklisting}
+          zIndex={11000}
+        >
+          {blocklistTarget?.sourceTitle && (
+            <div style={{ 
+              marginTop: '12px', 
+              padding: '8px 10px', 
+              background: 'rgba(255,255,255,0.06)', 
+              borderRadius: '6px', 
+              fontSize: '13px', 
+              wordBreak: 'break-all',
+              color: 'var(--text-primary)'
+            }}>
+              {blocklistTarget.sourceTitle}
+            </div>
+          )}
+        </ConfirmModal>
+      )}
     </Modal>
   );
 };

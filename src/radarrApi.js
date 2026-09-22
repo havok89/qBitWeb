@@ -204,3 +204,11 @@ export const getMovieHistory = async (movieId) => {
   const data = await handleResponse(res);
   return Array.isArray(data) ? data : (data.records || []);
 };
+
+export const markMovieHistoryFailed = async (historyId) => {
+  const res = await fetch(`/radarr/api/v3/history/failed/${historyId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return res.ok;
+};

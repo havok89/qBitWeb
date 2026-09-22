@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, X } from 'lucide-react';
 import { getAllMovies, getMovieQueue } from '../radarrApi';
 import { getAllSeries, getQueue } from '../sonarrApi';
 import MediaCard from './MediaCard';
@@ -10,6 +10,12 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
+
+  useEffect(() => {
+    if (refreshTrigger) {
+      setSearchTerm('');
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     const fetchLibrary = async () => {
@@ -85,11 +91,34 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ 
-              width: '100%', padding: '12px 12px 12px 40px', 
+              width: '100%', padding: '12px 36px 12px 40px', 
               borderRadius: '8px', border: '1px solid #333', 
               background: '#222', color: '#fff', fontSize: '15px'
             }}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              title="Clear search"
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
       
@@ -105,7 +134,11 @@ const LibraryView = ({ onSelectMedia, isDownloading, sonarrAvailable = true, rad
           {searchTerm && onAddMissingItem && (
             <button 
               className="btn btn-primary" 
-              onClick={() => onAddMissingItem(searchTerm)}
+              onClick={() => {
+                const term = searchTerm;
+                setSearchTerm('');
+                onAddMissingItem(term);
+              }}
             >
               Add "{searchTerm}" to Library
             </button>

@@ -2,12 +2,12 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import Modal from './Modal';
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title = "Confirm", message, isProcessing = false, confirmText = "Confirm", cancelText = "Cancel", isDanger = true, children }) => {
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title = "Confirm", message, isProcessing = false, confirmText = "Confirm", cancelText = "Cancel", isDanger = true, children, zIndex }) => {
   if (!isOpen) return null;
 
   return (
     <Modal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={onClose} style={zIndex ? { zIndex } : undefined}>
         <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
           <div className="modal-header">
             <h2>{title}</h2>
