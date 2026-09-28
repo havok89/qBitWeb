@@ -230,6 +230,13 @@ const TorrentFilesModal = ({ isOpen, onClose, torrent }) => {
     return buildFileTree(files);
   }, [files]);
 
+  const fileStats = useMemo(() => {
+    if (!files.length) return { hasVideo: true, hasDangerous: false, isFake: false };
+    const hasVideo = files.some(f => /\.(mkv|mp4|avi|m4v|mov|wmv|flv|webm|ts|m2ts)$/i.test(f.name || ''));
+    const hasDangerous = files.some(f => /\.(exe|scr|bat|cmd|msi|vbs|lnk|ps1)$/i.test(f.name || ''));
+    return { hasVideo, hasDangerous, isFake: hasDangerous && !hasVideo };
+  }, [files]);
+
   const handlePriorityChange = async (fileIds, priority) => {
     const originalFiles = [...files];
     setFiles(prev => prev.map(f => fileIds.includes(f.index) ? { ...f, priority } : f));
@@ -254,6 +261,23 @@ const TorrentFilesModal = ({ isOpen, onClose, torrent }) => {
               <X size={20} />
             </button>
           </div>
+
+          {fileStats.isFake && (
+            <div style={{
+              background: 'rgba(255, 69, 58, 0.15)',
+              border: '1px solid rgba(255, 69, 58, 0.3)',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              color: '#ff453a',
+              fontSize: '13px'
+            }}>
+              <strong>⚠️ Warning: Suspicious Executable Release</strong>
+              <div style={{ color: 'rgba(255, 255, 255, 0.8)', marginTop: '4px' }}>
+                This torrent contains executable files (.exe) and no video files.
+              </div>
+            </div>
+          )}
           
           <div className="search-bar" style={{ marginBottom: '16px' }}>
             <Search size={18} className="search-icon" />

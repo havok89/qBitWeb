@@ -67,16 +67,25 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
 
         setMediaItems(mergedData);
 
+        const processQueueItem = (q) => {
+          const isWarn = q.trackedDownloadStatus === 'warning' || q.status === 'warning' || (Array.isArray(q.statusMessages) && q.statusMessages.length > 0);
+          return {
+            status: isWarn ? 'warning' : (q.status === 'completed' ? 'importing' : 'downloading'),
+            queueId: q.id,
+            title: q.title,
+            messages: (q.statusMessages || []).flatMap(sm => sm.messages || []),
+            downloadId: q.downloadId,
+          };
+        };
+
         const newQueueMap = new Map();
         
         sonarrQueue.forEach(q => {
-          const status = q.status === 'completed' ? 'importing' : 'downloading';
-          newQueueMap.set(`sonarr-${q.episodeId}`, status);
+          newQueueMap.set(`sonarr-${q.episodeId}`, processQueueItem(q));
         });
         
         radarrQueue.forEach(q => {
-          const status = q.status === 'completed' ? 'importing' : 'downloading';
-          newQueueMap.set(`radarr-${q.movieId}`, status);
+          newQueueMap.set(`radarr-${q.movieId}`, processQueueItem(q));
         });
 
         setQueueStatusMap(newQueueMap);
@@ -116,15 +125,24 @@ const MediaList = ({ mode, isAuthenticated, sonarrAvailable, radarrAvailable, on
           
           const [sonarrQueue, radarrQueue] = await Promise.all(promises);
           
+          const processQueueItem = (q) => {
+            const isWarn = q.trackedDownloadStatus === 'warning' || q.status === 'warning' || (Array.isArray(q.statusMessages) && q.statusMessages.length > 0);
+            return {
+              status: isWarn ? 'warning' : (q.status === 'completed' ? 'importing' : 'downloading'),
+              queueId: q.id,
+              title: q.title,
+              messages: (q.statusMessages || []).flatMap(sm => sm.messages || []),
+              downloadId: q.downloadId,
+            };
+          };
+
           const newQueueMap = new Map();
           sonarrQueue.forEach(q => {
-            const status = q.status === 'completed' ? 'importing' : 'downloading';
-            newQueueMap.set(`sonarr-${q.episodeId}`, status);
+            newQueueMap.set(`sonarr-${q.episodeId}`, processQueueItem(q));
           });
           
           radarrQueue.forEach(q => {
-            const status = q.status === 'completed' ? 'importing' : 'downloading';
-            newQueueMap.set(`radarr-${q.movieId}`, status);
+            newQueueMap.set(`radarr-${q.movieId}`, processQueueItem(q));
           });
 
           setQueueStatusMap(newQueueMap);

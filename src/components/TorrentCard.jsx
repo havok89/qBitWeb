@@ -45,6 +45,7 @@ const TorrentCard = ({ torrent, onUpdate }) => {
   
   const percentage = Math.floor(torrent.progress * 100);
   const statusText = formatStatus(torrent.state);
+  const isSuspiciousExe = /\.(exe|scr|bat|lnk|msi|vbs)($|\b)/i.test(torrent.name);
 
   const handleTogglePause = async () => {
     if (isToggling) return;
@@ -108,6 +109,11 @@ const TorrentCard = ({ torrent, onUpdate }) => {
               {torrent.name}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isSuspiciousExe && (
+                <span className="modern-status" style={{ backgroundColor: 'rgba(255, 69, 58, 0.2)', color: '#ff453a', border: '1px solid rgba(255, 69, 58, 0.4)' }} title="This release appears to be an executable payload (.exe) instead of a video file">
+                  ⚠️ Executable
+                </span>
+              )}
               <span className={`modern-status ${isSeeding ? 'seeding' : ''}`}>{statusText}</span>
               <button className="icon-btn" style={{ padding: '4px' }} onClick={() => setShowFilesModal(true)} title="Files & Settings">
                 <Settings size={16} color="var(--text-secondary)" />

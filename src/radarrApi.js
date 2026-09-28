@@ -212,3 +212,11 @@ export const markMovieHistoryFailed = async (historyId) => {
   });
   return res.ok;
 };
+
+export const removeMovieFromQueue = async (queueId, blocklist = true, removeFromClient = true, skipRedownload = false) => {
+  const res = await fetch(`/radarr/api/v3/queue/${queueId}?removeFromClient=${removeFromClient}&blocklist=${blocklist}&skipRedownload=${skipRedownload}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+

@@ -8,6 +8,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import crypto from 'crypto';
+import { CleanerService } from './cleanerService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -264,9 +265,57 @@ app.post('/api/auth/webauthn/verify-authentication', async (req, res) => {
   }
 });
 
+// --- Queue Cleaner Service & Routes ---
+const cleanerService = new CleanerService({
+  dataDir,
+  sonarrUrl: SONARR_URL,
+  sonarrApiKey: SONARR_API_KEY,
+  radarrUrl: RADARR_URL,
+  radarrApiKey: RADARR_API_KEY,
+  qbittorrentUrl: QBITTORRENT_URL,
+  getQbitCookie: () => qbitCookie,
+});
+
+cleanerService.start();
+
+app.use('/api/cleaner', express.json());
+
+app.get('/api/cleaner/status', requireAuth, (req, res) => {
+  res.json(cleanerService.getStatus());
+});
+
+app.post('/api/cleaner/config', requireAuth, (req, res) => {
+  const updated = cleanerService.updateConfig(req.body);
+  res.json(updated);
+});
+
+app.post('/api/cleaner/run', requireAuth, async (req, res) => {
+  try {
+    const result = await cleanerService.scanQueues();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/cleaner/blocklist', requireAuth, async (req, res) => {
+  const { service, queueId } = req.body;
+  if (!service || !queueId) {
+    return res.status(400).json({ error: 'Missing service or queueId' });
+  }
+  const baseUrl = service === 'radarr' ? RADARR_URL : SONARR_URL;
+  const apiKey = service === 'radarr' ? RADARR_API_KEY : SONARR_API_KEY;
+  const success = await cleanerService.blocklistAndRemove(service, baseUrl, apiKey, queueId);
+  if (success) {
+    res.json({ success: true });
+  } else {
+    res.status(500).json({ error: 'Failed to blocklist and remove queue item' });
+  }
+});
+
 
 // --- Proxy Routes (Protected) ---
-// Now that /api/auth routes are defined above, they will catch first.
+// Now that /api/auth and /api/cleaner routes are defined above, they will catch first.
 app.use('/api', requireAuth, createProxyMiddleware({
   target: QBITTORRENT_URL,
   changeOrigin: true,

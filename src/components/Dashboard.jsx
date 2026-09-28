@@ -7,10 +7,10 @@ import Login from './Login';
 import AddMediaModal from './modals/AddMediaModal';
 import AddTorrentModal from './modals/AddTorrentModal';
 import ActiveSearchesModal from './modals/ActiveSearchesModal';
-import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences, checkQbittorrentStatus } from '../api';
+import { getTorrents, pauseTorrent, resumeTorrent, addTorrents, getCategories, getPreferences, setPreferences, checkQbittorrentStatus, getCleanerStatus, updateCleanerConfig, runCleanerNow } from '../api';
 import { checkSonarrStatus, deleteSeries } from '../sonarrApi';
 import { checkRadarrStatus, deleteMovie } from '../radarrApi';
-import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database } from 'lucide-react';
+import { DownloadCloud, Zap, Play, Square, Plus, Loader2, Menu, X, Tv, Calendar, History, Film, Settings, Database, RefreshCw } from 'lucide-react';
 import LibraryView from './LibraryView';
 import MediaDetailsRoute from './MediaDetailsRoute';
 import { useCommand } from '../CommandContext';
@@ -43,21 +43,63 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [passkeyMsg, setPasskeyMsg] = useState({ text: '', type: '' });
 
+  // Queue Cleaner State
+  const [cleanerStatus, setCleanerStatus] = useState(null);
+  const [isScanningCleaner, setIsScanningCleaner] = useState(false);
+  const [cleanerScanMessage, setCleanerScanMessage] = useState(null);
+
   const { searchStatuses } = useCommand();
   const isSearchActive = Object.values(searchStatuses).some(s => s?.isSearching);
   const [showSearchesModal, setShowSearchesModal] = useState(false);
 
   useEffect(() => {
-    if (showSettingsModal && qbittorrentAvailable) {
-      getPreferences().then(data => {
-        if (data) {
-          setDlLimit(data.dl_limit ? Math.round(data.dl_limit / 1024) : 0);
-          setUpLimit(data.up_limit ? Math.round(data.up_limit / 1024) : 0);
-          setMaxActiveDownloads(data.max_active_downloads !== undefined ? data.max_active_downloads : 3);
-        }
-      }).catch(console.error);
+    if (showSettingsModal) {
+      if (qbittorrentAvailable) {
+        getPreferences().then(data => {
+          if (data) {
+            setDlLimit(data.dl_limit ? Math.round(data.dl_limit / 1024) : 0);
+            setUpLimit(data.up_limit ? Math.round(data.up_limit / 1024) : 0);
+            setMaxActiveDownloads(data.max_active_downloads !== undefined ? data.max_active_downloads : 3);
+          }
+        }).catch(console.error);
+      }
+      if (sonarrAvailable || radarrAvailable) {
+        getCleanerStatus().then(status => {
+          if (status) setCleanerStatus(status);
+        }).catch(console.error);
+      }
     }
-  }, [showSettingsModal, qbittorrentAvailable]);
+  }, [showSettingsModal, qbittorrentAvailable, sonarrAvailable, radarrAvailable]);
+
+  const handleToggleCleaner = async (enabled) => {
+    try {
+      const updated = await updateCleanerConfig({ enabled });
+      setCleanerStatus(prev => prev ? { ...prev, enabled: updated.enabled } : null);
+    } catch (err) {
+      console.error('Failed to toggle cleaner config:', err);
+    }
+  };
+
+  const handleRunCleanerNow = async () => {
+    setIsScanningCleaner(true);
+    setCleanerScanMessage(null);
+    try {
+      const res = await runCleanerNow();
+      const count = res.cleaned?.length || 0;
+      if (count > 0) {
+        setCleanerScanMessage({ type: 'success', text: `Cleaned & blocklisted ${count} fake release${count > 1 ? 's' : ''}!` });
+      } else {
+        setCleanerScanMessage({ type: 'info', text: 'Queue is clean. No fake releases detected.' });
+      }
+      const updatedStatus = await getCleanerStatus();
+      setCleanerStatus(updatedStatus);
+    } catch (err) {
+      console.error('Failed to run cleaner:', err);
+      setCleanerScanMessage({ type: 'error', text: 'Queue scan failed.' });
+    } finally {
+      setIsScanningCleaner(false);
+    }
+  };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -396,6 +438,77 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
                     <small style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>0 for unlimited</small>
                   </div>
                 </>
+              )}
+
+              {(sonarrAvailable || radarrAvailable) && (
+                <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>Fake Torrent Auto-Cleaner</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        Auto-removes & blocklists releases with .exe payloads and no video files.
+                      </div>
+                    </div>
+                    <label className="checkbox-group" style={{ cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={cleanerStatus?.enabled ?? true} 
+                        onChange={(e) => handleToggleCleaner(e.target.checked)}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary" 
+                      style={{ fontSize: '13px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onClick={handleRunCleanerNow}
+                      disabled={isScanningCleaner}
+                    >
+                      {isScanningCleaner ? <Loader2 size={14} className="spinner" /> : <RefreshCw size={14} />}
+                      {isScanningCleaner ? 'Scanning Queues...' : 'Scan Queues Now'}
+                    </button>
+
+                    {cleanerStatus && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {cleanerStatus.cleanedCount > 0 ? `${cleanerStatus.cleanedCount} fake release${cleanerStatus.cleanedCount > 1 ? 's' : ''} cleaned` : 'Queue currently clean'}
+                      </span>
+                    )}
+                  </div>
+
+                  {cleanerScanMessage && (
+                    <div style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      backgroundColor: cleanerScanMessage.type === 'success' ? 'rgba(76, 175, 80, 0.15)' : cleanerScanMessage.type === 'error' ? 'rgba(255, 77, 77, 0.15)' : 'rgba(10, 132, 255, 0.15)',
+                      color: cleanerScanMessage.type === 'success' ? '#4caf50' : cleanerScanMessage.type === 'error' ? '#ff4d4d' : 'var(--accent-blue)',
+                      border: `1px solid ${cleanerScanMessage.type === 'success' ? 'rgba(76, 175, 80, 0.3)' : cleanerScanMessage.type === 'error' ? 'rgba(255, 77, 77, 0.3)' : 'rgba(10, 132, 255, 0.3)'}`
+                    }}>
+                      {cleanerScanMessage.text}
+                    </div>
+                  )}
+
+                  {cleanerStatus?.recentActions?.length > 0 && (
+                    <details style={{ fontSize: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '8px 12px' }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        Recent Blocklisted Releases ({cleanerStatus.recentActions.length})
+                      </summary>
+                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto' }}>
+                        {cleanerStatus.recentActions.map((act, idx) => (
+                          <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--danger)' }}>{act.title}</div>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '2px' }}>
+                              {act.service.toUpperCase()} • {act.reason} • {new Date(act.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
               )}
 
               {passkeyMsg.text && (

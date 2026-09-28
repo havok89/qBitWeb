@@ -283,3 +283,11 @@ export const markEpisodeHistoryFailed = async (historyId) => {
   return res.ok;
 };
 
+export const removeFromQueue = async (queueId, blocklist = true, removeFromClient = true, skipRedownload = false) => {
+  const res = await fetch(`/sonarr/api/v3/queue/${queueId}?removeFromClient=${removeFromClient}&blocklist=${blocklist}&skipRedownload=${skipRedownload}`, {
+    method: 'DELETE'
+  });
+  return res.ok;
+};
+
+

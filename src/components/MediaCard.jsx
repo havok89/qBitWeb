@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, Eye, EyeOff, ChevronRight } from 'lucide-react';
-import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue } from '../sonarrApi';
-import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue } from '../radarrApi';
+import { Calendar, Search, Loader2, AlertCircle, Clock, CheckCircle2, DownloadCloud, List, X, Download, Eye, EyeOff, ChevronRight, Ban } from 'lucide-react';
+import { searchEpisode, getReleases, downloadRelease, unmonitorEpisode, getQueue as getSonarrQueue, removeFromQueue } from '../sonarrApi';
+import { searchMovie, getMovieReleases, downloadMovieRelease, unmonitorMovie, getMovieQueue, removeMovieFromQueue } from '../radarrApi';
 import { useCommand } from '../CommandContext';
+import { useToast } from '../ToastContext';
 import InteractiveSearchModal from './modals/InteractiveSearchModal';
 import HistoryModal from './modals/HistoryModal';
 import LazyImage from './LazyImage';
@@ -11,6 +12,7 @@ import LazyImage from './LazyImage';
 const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, onSelectMedia }) => {
   const isRadarr = item._type === 'radarr';
   const { searchStatuses, trackCommand } = useCommand();
+  const { addToast } = useToast();
   const trackingKey = isRadarr ? `radarr-movie-${item.id}` : (item.series ? `sonarr-episode-${item.id}` : `sonarr-series-${item.id}`);
   const commandState = searchStatuses[trackingKey] || {};
   const isSearching = commandState.isSearching || false;
@@ -32,6 +34,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
   // Status override state
   const [isPendingDownload, setIsPendingDownload] = useState(false);
   const [localQueueStatus, setLocalQueueStatus] = useState(queueStatus);
+  const [isRemovingStuck, setIsRemovingStuck] = useState(false);
 
   useEffect(() => {
     setLocalQueueStatus(queueStatus);
@@ -47,7 +50,14 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
           const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
           const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
           if (matchedQ) {
-            setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
+            const isWarn = matchedQ.trackedDownloadStatus === 'warning' || matchedQ.status === 'warning' || (Array.isArray(matchedQ.statusMessages) && matchedQ.statusMessages.length > 0);
+            setLocalQueueStatus({
+              status: isWarn ? 'warning' : (matchedQ.status === 'completed' ? 'importing' : 'downloading'),
+              queueId: matchedQ.id,
+              title: matchedQ.title,
+              messages: (matchedQ.statusMessages || []).flatMap(sm => sm.messages || []),
+              downloadId: matchedQ.downloadId,
+            });
           }
         } catch (e) {
           console.error(e);
@@ -129,7 +139,32 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
   const now = new Date();
   const isUnaired = rawDate ? new Date(rawDate) > now : false;
   
-  const isDownloading = !!localQueueStatus;
+  const queueInfo = typeof localQueueStatus === 'object' && localQueueStatus !== null
+    ? localQueueStatus
+    : { status: localQueueStatus };
+  const currentQueueStatus = queueInfo.status;
+
+  const isDownloading = !!currentQueueStatus && currentQueueStatus !== 'warning';
+
+  const handleBlocklistStuck = async (e) => {
+    e.stopPropagation();
+    if (!queueInfo.queueId || isRemovingStuck) return;
+    setIsRemovingStuck(true);
+    try {
+      if (isRadarr) {
+        await removeMovieFromQueue(queueInfo.queueId, true, true, false);
+      } else {
+        await removeFromQueue(queueInfo.queueId, true, true, false);
+      }
+      setLocalQueueStatus(null);
+      addToast('Release blocklisted & removed. Searching for alternative...');
+    } catch (err) {
+      console.error('Failed to remove stuck release:', err);
+      addToast('Failed to blocklist and remove release.');
+    } finally {
+      setIsRemovingStuck(false);
+    }
+  };
 
   let statusBadge = 'Missing';
   let statusColor = 'var(--danger)';
@@ -168,11 +203,15 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
       else statusBadge = 'Downloaded';
       
       statusColor = '#34C759';
-    } else if (localQueueStatus === 'importing') {
+    } else if (currentQueueStatus === 'warning') {
+      statusBadge = 'Import Failed / Stuck';
+      statusColor = '#FF9500';
+      spinnerColor = '#FF9500';
+    } else if (currentQueueStatus === 'importing') {
       statusBadge = 'Importing';
       statusColor = '#A855F7';
       spinnerColor = '#A855F7';
-    } else if (localQueueStatus === 'downloading') {
+    } else if (currentQueueStatus === 'downloading') {
       statusBadge = 'Downloading';
       statusColor = 'var(--accent-blue)';
       spinnerColor = 'var(--accent-blue)';
@@ -303,6 +342,7 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
                   {(item.hasFile || statusBadge === 'Downloaded') && <CheckCircle2 size={14} style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Downloading' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
                   {statusBadge === 'Importing' && <Loader2 size={14} className="spinner" style={{ marginRight: '4px' }} />}
+                  {statusBadge === 'Import Failed / Stuck' && <AlertCircle size={14} style={{ marginRight: '4px' }} />}
                 </>
               )}
               {isPendingDownload ? 'Checking...' : statusBadge}
@@ -311,6 +351,17 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
         </div>
 
         <div className="action-buttons">
+          {currentQueueStatus === 'warning' && queueInfo?.queueId && (
+            <button 
+              className="icon-btn" 
+              onClick={handleBlocklistStuck} 
+              title="Blocklist fake/stuck download & Re-search"
+              disabled={isRemovingStuck}
+              style={{ borderColor: 'rgba(255, 69, 58, 0.4)', color: '#ff453a' }}
+            >
+              {isRemovingStuck ? <Loader2 size={18} className="spinner" /> : <Ban size={18} />}
+            </button>
+          )}
           {isRadarr && !hideUnmonitor && !hideSearch && (
             <button 
               className="icon-btn" 
@@ -387,7 +438,14 @@ const MediaCard = ({ item, queueStatus, hideSearch, hideHistory, hideUnmonitor, 
               const queue = isRadarr ? await getMovieQueue() : await getSonarrQueue();
               const matchedQ = queue.find(q => (isRadarr ? q.movieId : q.episodeId) === item.id);
               if (matchedQ) {
-                setLocalQueueStatus(matchedQ.status === 'completed' ? 'importing' : 'downloading');
+                const isWarn = matchedQ.trackedDownloadStatus === 'warning' || matchedQ.status === 'warning' || (Array.isArray(matchedQ.statusMessages) && matchedQ.statusMessages.length > 0);
+                setLocalQueueStatus({
+                  status: isWarn ? 'warning' : (matchedQ.status === 'completed' ? 'importing' : 'downloading'),
+                  queueId: matchedQ.id,
+                  title: matchedQ.title,
+                  messages: (matchedQ.statusMessages || []).flatMap(sm => sm.messages || []),
+                  downloadId: matchedQ.downloadId,
+                });
               }
             } catch (e) {
               console.error(e);

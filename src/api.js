@@ -129,3 +129,34 @@ export const setPreferences = async (prefs) => {
   });
   return res.ok;
 };
+
+export const getCleanerStatus = async () => {
+  const res = await fetch('/api/cleaner/status');
+  return handleResponse(res);
+};
+
+export const updateCleanerConfig = async (config) => {
+  const res = await fetch('/api/cleaner/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  });
+  return handleResponse(res);
+};
+
+export const runCleanerNow = async () => {
+  const res = await fetch('/api/cleaner/run', {
+    method: 'POST',
+  });
+  return handleResponse(res);
+};
+
+export const blocklistQueueItem = async (service, queueId) => {
+  const res = await fetch('/api/cleaner/blocklist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service, queueId }),
+  });
+  return handleResponse(res);
+};
+
