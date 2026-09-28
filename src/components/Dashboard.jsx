@@ -491,23 +491,27 @@ const Dashboard = ({ authStatus, onLogin, onLogout, updateAvailable }) => {
                     </div>
                   )}
 
-                  {cleanerStatus?.recentActions?.length > 0 && (
-                    <details style={{ fontSize: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '8px 12px' }}>
-                      <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        Recent Blocklisted Releases ({cleanerStatus.recentActions.length})
-                      </summary>
-                      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto' }}>
-                        {cleanerStatus.recentActions.map((act, idx) => (
+                  <details style={{ fontSize: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '8px 12px' }}>
+                    <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                      Recent Blocklisted Releases ({cleanerStatus?.recentActions?.length || 0})
+                    </summary>
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto' }}>
+                      {cleanerStatus?.recentActions?.length > 0 ? (
+                        cleanerStatus.recentActions.map((act, idx) => (
                           <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
                             <div style={{ fontWeight: 600, color: 'var(--danger)' }}>{act.title}</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '2px' }}>
                               {act.service.toUpperCase()} • {act.reason} • {new Date(act.timestamp).toLocaleTimeString()}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
+                        ))
+                      ) : (
+                        <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', padding: '4px 0' }}>
+                          No releases blocklisted yet.
+                        </div>
+                      )}
+                    </div>
+                  </details>
                 </div>
               )}
 
