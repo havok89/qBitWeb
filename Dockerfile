@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 COPY --from=builder /app/dist ./dist
-COPY server.js ./
+COPY server.js cleanerService.js ./
 
 # Create data directory for persistent auth storage
 RUN mkdir -p /app/data && chown -R node:node /app/data
